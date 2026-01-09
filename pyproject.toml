@@ -1,12 +1,12 @@
 [project]
 name = "protopy"
 version = "0.1.0"
-description = "Proto3 parser with a custom AST, hand-written tokenizer, and from-scratch LALR(1) parser."
+description = "Protobuf proto3 syntax parser"
 readme = "README.md"
 requires-python = ">=3.14"
 license = { file = "LICENSE" }
-authors = [{ name = "protopy contributors" }]
-keywords = ["protobuf", "proto3", "parser", "lalr", "ast"]
+authors = [{ name = "maralla" }]
+keywords = ["protobuf", "proto3", "parser"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -18,17 +18,14 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Repository = "https://example.invalid/protopy"
-
-[project.scripts]
-protopy = "protopy.cli:main"
+Repository = "https://github.com/maralla/protopy"
 
 [build-system]
 requires = ["hatchling>=1.27.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/protopy"]
+packages = ["protopy"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
