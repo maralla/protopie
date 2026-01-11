@@ -1,0 +1,4 @@
+# file: /Users/maralla/Workspace/projects/protopy/protopy/ast.py
+# hypothesis_version: 6.150.0
+
+[' {', ' }', '"', ', ', '.', '/*missing-type*/', '/*unknown-const*/', ';', 'Enum', 'FLOAT', 'INT', 'Message', 'STRING', 'TypeRef | None', '\\"', 'aggregate', 'false', 'ident', 'repeated ', 'reserved', 'stream ', 'true', '{ ', '}']

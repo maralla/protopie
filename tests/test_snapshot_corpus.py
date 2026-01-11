@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 
-from protopy import format_proto_file, parse_source
+from protopy import parse_source
 
 from protopy.testing import generate_proto_sources
 
@@ -19,9 +19,9 @@ def test_snapshot_corpus_hash() -> None:
     h = hashlib.sha256()
     for i, src in enumerate(generate_proto_sources(seed=seed, count=count)):
         ast1 = parse_source(src, file=f"snapshot:{seed}:{i}.proto")
-        out1 = format_proto_file(ast1)
+        out1 = ast1.format()
         ast2 = parse_source(out1, file=f"snapshot:{seed}:{i}.proto")
-        out2 = format_proto_file(ast2)
+        out2 = ast2.format()
         assert out2 == out1
 
         h.update(out2.encode("utf-8"))

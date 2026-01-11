@@ -1,15 +1,163 @@
 from __future__ import annotations
 
-from .api import ParseResult, parse_file, parse_files, parse_source
+from dataclasses import dataclass
+from pathlib import Path
+
+from .ast import Import, ProtoFile
 from .errors import ParseError
-from .format import format_proto_file
+from .grammar import GrammarBuilder
+from .lexer import tokenize
+from .parser import Parser
+from .spans import Position, Span
+
 
 __all__ = [
     "ParseError",
     "ParseResult",
-    "format_proto_file",
     "parse_file",
     "parse_files",
     "parse_source",
 ]
 
+
+# Global parser cache
+_PARSER: Parser | None = None
+
+
+def _get_parser() -> Parser:
+    """Get or create the cached parser instance."""
+    global _PARSER
+    if _PARSER is None:
+        _PARSER = Parser.for_grammar(GrammarBuilder.build())
+    return _PARSER
+
+
+@dataclass(frozen=True, slots=True)
+class ParseResult:
+    """Result of parsing multiple files with import resolution."""
+    entrypoints: tuple[str, ...]
+    files: dict[str, ProtoFile]  # absolute path -> AST
+
+
+def parse_source(src: str, *, file: str = "<memory>") -> ProtoFile:
+    """Parse proto3 source code into an AST.
+
+    Args:
+        src: Proto3 source code as a string
+        file: Filename for error messages (default: "<memory>")
+
+    Returns:
+        ProtoFile AST node
+
+    Raises:
+        ParseError: If the source is invalid
+    """
+    tokens = tokenize(src, file=file)
+    result = _get_parser().parse(tokens)
+
+    if not isinstance(result, ProtoFile):
+        raise RuntimeError(f"parser returned unexpected value: {type(result)!r}")
+
+    # Patch placeholder span if needed
+    if result.span.file == "<unknown>":
+        pos_zero = Position(offset=0, line=1, column=1)
+        result = ProtoFile(
+            span=Span(file=file, start=pos_zero, end=pos_zero),
+            syntax=result.syntax,
+            items=result.items,
+            imports=result.imports,
+            package=result.package,
+        )
+
+    # Proto3 requires syntax declaration
+    if result.syntax is None:
+        raise ParseError(
+            span=tokens[0].span,
+            message="missing syntax declaration",
+            hint='add: syntax = "proto3"; at the top of the file',
+        )
+
+    return result
+
+
+def parse_file(path: str | Path) -> ProtoFile:
+    """Parse a proto3 file into an AST.
+
+    Args:
+        path: Path to the .proto file
+
+    Returns:
+        ProtoFile AST node
+
+    Raises:
+        ParseError: If the file is invalid
+    """
+    file_path = Path(path).expanduser().resolve()
+    source = file_path.read_text(encoding="utf-8")
+    return parse_source(source, file=str(file_path))
+
+
+def _resolve_import(
+    imp: Import,
+    importer: Path,
+    import_roots: list[Path]
+) -> Path:
+    relative_path = Path(imp.path)
+    candidates = [importer.parent / relative_path] + [root / relative_path for root in import_roots]
+
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return candidate.resolve()
+
+    raise ParseError(
+        span=imp.span,
+        message=f"import not found: {imp.path!r}",
+        hint="add the directory containing that file to import_paths",
+    )
+
+
+def _load_file_recursive(
+    path: Path,
+    import_roots: list[Path],
+    files: dict[str, ProtoFile]
+) -> None:
+    absolute_path = str(path.resolve())
+    if absolute_path in files:
+        return
+
+    ast = parse_file(path)
+    files[absolute_path] = ast
+
+    for imp in ast.imports:
+        resolved = _resolve_import(imp, path, import_roots)
+        _load_file_recursive(resolved, import_roots, files)
+
+
+def parse_files(
+    *,
+    entrypoints: list[str | Path],
+    import_paths: list[str | Path] | None = None,
+) -> ParseResult:
+    """Parse multiple proto3 files with import resolution.
+
+    Args:
+        entrypoints: List of main .proto files to parse
+        import_paths: Additional directories to search for imports
+
+    Returns:
+        ParseResult containing all parsed files
+
+    Raises:
+        ParseError: If any file is invalid or imports cannot be resolved
+    """
+    import_roots = [Path(p).expanduser().resolve() for p in (import_paths or [])]
+    files: dict[str, ProtoFile] = {}
+
+    entry_paths = [Path(p).expanduser().resolve() for p in entrypoints]
+    for entry in entry_paths:
+        _load_file_recursive(entry, import_roots, files)
+
+    return ParseResult(
+        entrypoints=tuple(str(p) for p in entry_paths),
+        files=files
+    )

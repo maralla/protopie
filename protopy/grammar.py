@@ -490,18 +490,14 @@ class GrammarBuilder:
     # Semantic actions: Qualified names
     # -----------------------------------------------------------------------
     
-    def act_ident(
-        values: tuple[IDENT | SYNTAX]
-    ) -> Ident[object]:
+    def act_ident(values: tuple[IDENT | SYNTAX]) -> Ident[object]:
         return values[0]
     
-    def act_name_tail(
-        values: tuple[DOT, Ident, NameTail] | Epsilon
-    ) -> NameTail[list]:
+    def act_name_tail(values: tuple[DOT, Ident, NameTail] | Epsilon) -> NameTail[list]:
         if len(values) == 0:
             return []
-        tok: Token = values[1]
-        return [tok] + values[2]
+
+        return [values[1]] + values[2]
     
     def act_qualified_name_absolute(
         values: tuple[DOT, Ident, NameTail]

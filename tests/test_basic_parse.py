@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from protopy import ParseError, format_proto_file, parse_files, parse_source
+from protopy import ParseError, parse_files, parse_source
 
 
 def test_missing_syntax_is_error() -> None:
@@ -49,9 +49,9 @@ service S {
 }
 """
     ast1 = parse_source(src, file="x.proto")
-    out = format_proto_file(ast1)
+    out = ast1.format()
     ast2 = parse_source(out, file="x.proto")
-    assert format_proto_file(ast2) == out
+    assert ast2.format() == out
 
 
 def test_import_resolution(tmp_path: Path) -> None:

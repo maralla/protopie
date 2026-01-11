@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 
-from protopy import format_proto_file, parse_source
+from protopy import parse_source
 
 
 def _generate(seed: int, count: int) -> list[str]:
@@ -21,9 +21,9 @@ def main(argv: list[str] | None = None) -> int:
     h = hashlib.sha256()
     for i, src in enumerate(_generate(args.seed, args.count)):
         ast1 = parse_source(src, file=f"snapshot:{args.seed}:{i}.proto")
-        out1 = format_proto_file(ast1)
+        out1 = ast1.format()
         ast2 = parse_source(out1, file=f"snapshot:{args.seed}:{i}.proto")
-        out2 = format_proto_file(ast2)
+        out2 = ast2.format()
         if out2 != out1:
             raise SystemExit(f"non-idempotent formatting at case {i}")
         h.update(out2.encode("utf-8"))

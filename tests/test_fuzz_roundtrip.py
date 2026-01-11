@@ -3,7 +3,7 @@ from __future__ import annotations
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from protopy import format_proto_file, parse_source
+from protopy import parse_source
 
 
 def _ident() -> st.SearchStrategy[str]:
@@ -86,8 +86,8 @@ def proto_sources(draw) -> str:
 def test_fuzz_roundtrip_stable_format(src: str) -> None:
     # Parse -> format -> parse -> format should converge (idempotent formatting).
     ast1 = parse_source(src, file="fuzz.proto")
-    out1 = format_proto_file(ast1)
+    out1 = ast1.format()
     ast2 = parse_source(out1, file="fuzz.proto")
-    out2 = format_proto_file(ast2)
+    out2 = ast2.format()
     assert out2 == out1
 

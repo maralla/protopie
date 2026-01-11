@@ -1,0 +1,4 @@
+# file: /Users/maralla/Workspace/projects/protopy/protopy/__init__.py
+# hypothesis_version: 6.150.0
+
+['ParseError', 'ParseResult', 'format_proto_file', 'parse_file', 'parse_files', 'parse_source']

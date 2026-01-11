@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from protopy import format_proto_file, parse_file, parse_files
+from protopy import parse_file, parse_files
 from protopy.testing import generate_corpus_files
 
 
@@ -25,12 +25,12 @@ def test_generated_corpus_on_disk_parse_and_hash(tmp_path: Path) -> None:
     for rel, _ in files:
         p = corpus_dir / rel
         ast = parse_file(p)
-        formatted = format_proto_file(ast)
+        formatted = ast.format()
         h.update(formatted.encode("utf-8"))
         h.update(b"\n---\n")
         # also check format->parse stability
         ast2 = parse_file(_write_tmp(corpus_dir, rel + ".fmt", formatted))
-        assert format_proto_file(ast2) == formatted
+        assert ast2.format() == formatted
         entrypoints.append(p)
 
     # parse_files import resolution (imports reference earlier corpus files)
