@@ -4,10 +4,18 @@ import re
 from dataclasses import dataclass
 
 from .errors import ParseError
-from .proto3 import KEYWORDS
+from .grammar import KEYWORDS, PUNCTUATION, Token
 from .spans import Position, Span
-from .tokens import Token, TokenKind
 
+# Import terminal instances (not type classes)
+from .grammar import EOF, FLOAT, IDENT, INT, STRING
+
+# These are type classes, need their symbol instances
+EOF = EOF.symbol
+FLOAT = FLOAT.symbol
+IDENT = IDENT.symbol
+INT = INT.symbol
+STRING = STRING.symbol
 
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _INT_RE = re.compile(r"[+-]?(?:0|[1-9][0-9]*)")
@@ -106,7 +114,7 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
                     cur.advance()
                     end = cur.pos()
                     lex = "".join(buf)
-                    tokens.append(Token(TokenKind.STRING, lex, make_span(start, end)))
+                    tokens.append(Token(STRING, lex, make_span(start, end)))
                     break
                 if c == "\n":
                     raise error_at(start, "unterminated string literal", hint="close the quote")
@@ -131,7 +139,7 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
             lex = m.group(0)
             cur.advance(len(lex))
             end = cur.pos()
-            tokens.append(Token(TokenKind.FLOAT, lex, make_span(start, end)))
+            tokens.append(Token(FLOAT, lex, make_span(start, end)))
             continue
 
         m = _INT_RE.match(src, cur.i)
@@ -139,7 +147,7 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
             lex = m.group(0)
             cur.advance(len(lex))
             end = cur.pos()
-            tokens.append(Token(TokenKind.INT, lex, make_span(start, end)))
+            tokens.append(Token(INT, lex, make_span(start, end)))
             continue
 
         # identifiers / keywords
@@ -148,28 +156,12 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
             lex = m.group(0)
             cur.advance(len(lex))
             end = cur.pos()
-            kind = KEYWORDS.get(lex, TokenKind.IDENT)
+            kind = KEYWORDS.get(lex, IDENT)
             tokens.append(Token(kind, lex, make_span(start, end)))
             continue
 
         # punctuation
-        single = {
-            "{": TokenKind.LBRACE,
-            "}": TokenKind.RBRACE,
-            "[": TokenKind.LBRACKET,
-            "]": TokenKind.RBRACKET,
-            "(": TokenKind.LPAREN,
-            ")": TokenKind.RPAREN,
-            "<": TokenKind.LANGLE,
-            ">": TokenKind.RANGLE,
-            ";": TokenKind.SEMI,
-            ",": TokenKind.COMMA,
-            ".": TokenKind.DOT,
-            "=": TokenKind.EQ,
-            ":": TokenKind.COLON,
-            "/": TokenKind.SLASH,
-        }
-        k = single.get(ch)
+        k = PUNCTUATION.get(ch)
         if k is not None:
             cur.advance()
             end = cur.pos()
@@ -183,6 +175,6 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
         )
 
     eof_pos = cur.pos()
-    tokens.append(Token(TokenKind.EOF, "", Span(file=file, start=eof_pos, end=eof_pos)))
+    tokens.append(Token(EOF, "", Span(file=file, start=eof_pos, end=eof_pos)))
     return tokens
 

@@ -1,0 +1,4 @@
+# file: /Users/maralla/Workspace/projects/protopy/protopy/lexer.py
+# hypothesis_version: 6.150.0
+
+['"\'', '*', '/', '<memory>', '\\', 'add closing */', 'close the quote']

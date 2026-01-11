@@ -1,0 +1,4 @@
+# file: /Users/maralla/Workspace/projects/protopy/protopy/lalr.py
+# hypothesis_version: 6.150.0
+
+["'", 'accept', 'reduce', 'shift']

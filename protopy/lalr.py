@@ -2,15 +2,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .grammar import Grammar, NonTerminal, Production, Symbol, Terminal
-from .tokens import TokenKind
+from .grammar import (
+    EOF as EOF_TYPE,
+    Grammar,
+    NonTerminalSymbol,
+    Production,
+    Symbol,
+    TerminalSymbol,
+)
+
+# Extract the symbol from the type class
+EOF = EOF_TYPE.symbol
+
+# For backward compatibility in type hints  
+Terminal = TerminalSymbol
+NonTerminal = NonTerminalSymbol
 
 
 @dataclass(frozen=True, slots=True)
 class LR1Item:
     prod_index: int
     dot: int
-    lookahead: TokenKind
+    lookahead: Terminal
 
     def core(self) -> tuple[int, int]:
         return (self.prod_index, self.dot)
@@ -24,7 +37,7 @@ class ParseTable:
     GOTO[state][nonterminal] = next_state
     """
 
-    action: dict[int, dict[TokenKind, tuple[str, int]]]
+    action: dict[int, dict[Terminal, tuple[str, int]]]
     goto: dict[int, dict[NonTerminal, int]]
 
 
@@ -32,7 +45,7 @@ class GrammarAnalysisError(Exception):
     pass
 
 
-def build_lalr_table(grammar: Grammar[object]) -> ParseTable:
+def build_lalr_table(grammar: Grammar) -> ParseTable:
     # Compute FIRST sets over symbols (terminals and nonterminals), with ε tracking.
     nonterms: set[NonTerminal] = {p.head for p in grammar.productions}
     terms: set[Terminal] = {
@@ -40,23 +53,23 @@ def build_lalr_table(grammar: Grammar[object]) -> ParseTable:
     }
     eps = object()
 
-    first: dict[Symbol | object, set[TokenKind | object]] = {}
+    first: dict[Symbol | object, set[Terminal | object]] = {}
     for t in terms:
-        first[t] = {t.kind}
+        first[t] = {t}
     # Always include EOF as a terminal for lookahead computations.
-    first[Terminal(TokenKind.EOF)] = {TokenKind.EOF}
+    first[EOF] = {EOF}
     for nt in nonterms:
         first[nt] = set()
 
-    def first_seq(seq: tuple[Symbol, ...]) -> set[TokenKind | object]:
-        out: set[TokenKind | object] = set()
+    def first_seq(seq: tuple[Symbol, ...]) -> set[Terminal | object]:
+        out: set[Terminal | object] = set()
         if not seq:
             out.add(eps)
             return out
         for sym in seq:
             # Some terminals can appear only as lookaheads (not in bodies); treat them as base.
             if sym not in first and isinstance(sym, Terminal):
-                first[sym] = {sym.kind}
+                first[sym] = {sym}
             sym_first = first[sym]
             out |= {x for x in sym_first if x is not eps}
             if eps not in sym_first:
@@ -88,9 +101,9 @@ def build_lalr_table(grammar: Grammar[object]) -> ParseTable:
                 if not isinstance(sym, NonTerminal):
                     continue
                 beta = prod.body[it.dot + 1 :]
-                look = first_seq(beta + (Terminal(it.lookahead),))
+                look = first_seq(beta + (it.lookahead,))
                 lookaheads = [x for x in look if x is not eps]
-                for j in grammar.prods_for(sym):
+                for j in grammar.productions_for(sym):
                     for la in lookaheads:
                         new_it = LR1Item(j, 0, la)  # type: ignore[arg-type]
                         if new_it not in out:
@@ -141,7 +154,7 @@ def build_lalr_table(grammar: Grammar[object]) -> ParseTable:
                 if not isinstance(sym, NonTerminal):
                     continue
                 beta = prod.body[it.dot + 1 :]
-                look = first_seq(beta + (Terminal(it.lookahead),))
+                look = first_seq(beta + (it.lookahead,))
                 lookaheads = [x for x in look if x is not eps]
                 for j in prods_for(sym):
                     for la in lookaheads:
@@ -163,10 +176,10 @@ def build_lalr_table(grammar: Grammar[object]) -> ParseTable:
     for p in g2.productions:
         symbols |= set(p.body)
     # EOF is never shifted in this augmented grammar; it's only a lookahead.
-    symbols.discard(Terminal(TokenKind.EOF))
+    symbols.discard(EOF)
 
     # Canonical LR(1) collection
-    I0 = closure2({LR1Item(0, 0, TokenKind.EOF)})
+    I0 = closure2({LR1Item(0, 0, EOF)})
     states: list[set[LR1Item]] = [I0]
     transitions: dict[tuple[int, Symbol], int] = {}
 
@@ -201,7 +214,7 @@ def build_lalr_table(grammar: Grammar[object]) -> ParseTable:
     old_to_new: dict[int, int] = {}
     for core, idxs in core_to_states.items():
         # union lookaheads for items with same core
-        merged: dict[tuple[int, int], set[TokenKind]] = {c: set() for c in core}
+        merged: dict[tuple[int, int], set[Terminal]] = {c: set() for c in core}
         for i in idxs:
             for it in states[i]:
                 merged[(it.prod_index, it.dot)].add(it.lookahead)
@@ -219,14 +232,14 @@ def build_lalr_table(grammar: Grammar[object]) -> ParseTable:
         merged_trans[(old_to_new[i], sym)] = old_to_new[j]
 
     # Build ACTION/GOTO
-    action: dict[int, dict[TokenKind, tuple[str, int]]] = {}
+    action: dict[int, dict[Terminal, tuple[str, int]]] = {}
     goto_tbl: dict[int, dict[NonTerminal, int]] = {}
 
-    def add_action(st: int, term: TokenKind, act: tuple[str, int]) -> None:
+    def add_action(st: int, term: Terminal, act: tuple[str, int]) -> None:
         row = action.setdefault(st, {})
         if term in row and row[term] != act:
             raise GrammarAnalysisError(
-                f"conflict in state {st} on {term.value}: {row[term]} vs {act}"
+                f"conflict in state {st} on {term.name}: {row[term]} vs {act}"
             )
         row[term] = act
 
@@ -239,14 +252,14 @@ def build_lalr_table(grammar: Grammar[object]) -> ParseTable:
                 if isinstance(sym, Terminal):
                     j = merged_trans.get((i, sym))
                     if j is not None:
-                        add_action(i, sym.kind, ("shift", j))
+                        add_action(i, sym, ("shift", j))
                 else:
                     # goto handled below
                     pass
             else:
                 # reduce / accept
-                if it.prod_index == 0 and it.lookahead == TokenKind.EOF:
-                    add_action(i, TokenKind.EOF, ("accept", 0))
+                if it.prod_index == 0 and it.lookahead == EOF:
+                    add_action(i, EOF, ("accept", 0))
                 else:
                     # reduce by prod_index in original grammar indexing (exclude augmented)
                     add_action(i, it.lookahead, ("reduce", it.prod_index - 1))
@@ -261,15 +274,15 @@ def build_lalr_table(grammar: Grammar[object]) -> ParseTable:
     return ParseTable(action=action, goto=goto_tbl)
 
 
-def expected_terminals(table: ParseTable, state: int) -> set[TokenKind]:
+def expected_terminals(table: ParseTable, state: int) -> set[Terminal]:
     return set(table.action.get(state, {}).keys())
 
 
-def all_terminals(grammar: Grammar[object]) -> set[TokenKind]:
-    out: set[TokenKind] = set()
+def all_terminals(grammar: Grammar) -> set[Terminal]:
+    out: set[Terminal] = set()
     for p in grammar.productions:
         for s in p.body:
             if isinstance(s, Terminal):
-                out.add(s.kind)
+                out.add(s)
     return out
 

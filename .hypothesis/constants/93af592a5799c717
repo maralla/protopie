@@ -1,0 +1,4 @@
+# file: /Users/maralla/Workspace/projects/protopy/protopy/ast.py
+# hypothesis_version: 6.150.0
+
+['.', 'Enum', 'Message', 'TypeRef | None']

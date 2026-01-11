@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from protopy.proto3 import build_proto3_grammar
+from protopy.grammar import GrammarBuilder
 
 
 def main() -> None:
-    g = build_proto3_grammar()
+    g = GrammarBuilder.build()
     print(f"productions: {len(g.productions)}")
     for i, p in enumerate(g.productions):
         print(f"{i:>3}: {p}")

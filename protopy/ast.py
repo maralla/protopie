@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .spans import Span
+from .symbol import TerminalSymbol
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,7 +59,7 @@ class OptionName(Node):
 
 @dataclass(frozen=True, slots=True)
 class Constant(Node):
-    kind: str  # "ident" | "int" | "float" | "string" | "bool" | "aggregate"
+    kind: TerminalSymbol  # Terminal symbol representing the constant type
     value: object
 
 

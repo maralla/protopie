@@ -7,7 +7,7 @@ from .ast import Import, ProtoFile
 from .errors import ParseError
 from .lexer import tokenize
 from .parser import Parser
-from .proto3 import build_proto3_grammar
+from .grammar import GrammarBuilder
 from .spans import Position, Span
 
 
@@ -17,7 +17,7 @@ _PARSER: Parser | None = None
 def _get_parser() -> Parser:
     global _PARSER
     if _PARSER is None:
-        _PARSER = Parser.for_grammar(build_proto3_grammar())
+        _PARSER = Parser.for_grammar(GrammarBuilder.build())
     return _PARSER
 
 

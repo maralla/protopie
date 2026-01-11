@@ -1,0 +1,4 @@
+# file: /Users/maralla/Workspace/projects/protopy/protopy/parser.py
+# hypothesis_version: 6.150.0
+
+[', ', 'Parser', 'accept', 'reduce', 'shift', '{}[]()<>,.;=:']

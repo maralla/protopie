@@ -3,33 +3,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .errors import ParseError
-from .grammar import Grammar, NonTerminal, Production, Terminal
+from .grammar import (
+    Grammar,
+    NonTerminalSymbol,
+    Production,
+    TerminalSymbol,
+    Token,
+    join_span,
+)
 from .lalr import ParseTable, build_lalr_table, expected_terminals
-from .spans import Span
-from .tokens import Token, TokenKind
+
+# For backward compatibility in type hints
+Terminal = TerminalSymbol
+NonTerminal = NonTerminalSymbol
 
 
-def _span_of(v: object) -> Span:
-    # Token and AST nodes both carry .span.
-    sp = getattr(v, "span", None)
-    if sp is None:
-        raise TypeError(f"semantic value has no span: {type(v)!r}")
-    return sp
-
-
-def join_span(*vals: object) -> Span:
-    """Join spans of tokens/nodes into a single span (from first to last)."""
-    real = [v for v in vals if v is not None]
-    if not real:
-        raise ValueError("join_span() requires at least one value")
-    first = _span_of(real[0])
-    last = _span_of(real[-1])
-    return Span(file=first.file, start=first.start, end=last.end)
-
-
-def _token_display(kind: TokenKind) -> str:
-    # Prefer printable punctuation and keywords as-is, fall back to enum name.
-    v = kind.value
+def _token_display(term: Terminal) -> str:
+    # Prefer printable punctuation and keywords as-is, fall back to name.
+    v = term.name
     if len(v) == 1 and v in "{}[]()<>,.;=:":
         return v
     return v
@@ -37,11 +28,11 @@ def _token_display(kind: TokenKind) -> str:
 
 @dataclass(slots=True)
 class Parser:
-    grammar: Grammar[object]
+    grammar: Grammar
     table: ParseTable
 
     @classmethod
-    def for_grammar(cls, grammar: Grammar[object]) -> "Parser":
+    def for_grammar(cls, grammar: Grammar) -> "Parser":
         return cls(grammar=grammar, table=build_lalr_table(grammar))
 
     def parse(self, tokens: list[Token]) -> object:
@@ -53,14 +44,14 @@ class Parser:
         while True:
             state = states[-1]
             tok = tokens[i]
-            act = self.table.action.get(state, {}).get(tok.kind)
+            act = self.table.action.get(state, {}).get(tok.kind)  # tok.kind is Terminal
             if act is None:
-                exp = sorted(expected_terminals(self.table, state), key=lambda k: k.value)
-                exp_s = ", ".join(_token_display(k) for k in exp[:12])
+                exp = sorted(expected_terminals(self.table, state), key=lambda t: t.name)
+                exp_s = ", ".join(_token_display(t) for t in exp[:12])
                 hint = None
                 if exp:
                     hint = f"expected one of: {exp_s}"
-                raise ParseError(span=tok.span, message=f"unexpected {tok.kind.value}", hint=hint)
+                raise ParseError(span=tok.span, message=f"unexpected {tok.kind.name}", hint=hint)
 
             kind, arg = act
             if kind == "shift":
@@ -76,7 +67,7 @@ class Parser:
                     raise RuntimeError(
                         "invalid reduce: stack underflow "
                         f"(state={state}, prod={arg}='{prod}', k={k}, "
-                        f"values={len(values)}, states={len(states)}, lookahead={tok.kind.value})"
+                        f"values={len(values)}, states={len(states)}, lookahead={tok.kind.name})"
                     )
                 rhs_vals = values[-k:] if k else []
                 if k:

@@ -200,17 +200,18 @@ def _format_reserved(r: A.Reserved) -> str:
 
 
 def _format_const(c: A.Constant) -> str:
-    if c.kind == "int":
+    kind_name = c.kind.name
+    if kind_name == "INT":
         return str(c.value)
-    if c.kind == "float":
+    if kind_name == "FLOAT":
         return str(c.value)
-    if c.kind == "string":
+    if kind_name == "STRING":
         return '"' + str(c.value).replace('"', '\\"') + '"'
-    if c.kind == "bool":
+    if kind_name in ("true", "false"):
         return "true" if c.value else "false"
-    if c.kind == "ident":
+    if kind_name == "ident":
         return str(c.value)
-    if c.kind == "aggregate":
+    if kind_name == "aggregate":
         fields = []
         for k, v in c.value:  # type: ignore[assignment]
             fields.append(f"{k}: {_format_const(v)}")
