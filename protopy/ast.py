@@ -1,12 +1,16 @@
 from dataclasses import dataclass, field
 
-from .spans import Span
-from .symbol import TerminalSymbol
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .spans import Span
+    from .symbol import TerminalSymbol
 
 
 @dataclass(frozen=True, slots=True)
 class Node:
     """Base class for all AST nodes."""
+
     span: Span
 
 
@@ -18,6 +22,7 @@ class QualifiedName(Node):
       - foo.bar.Baz
       - .google.protobuf.Timestamp
       - MyMessage
+
     """
 
     absolute: bool
@@ -34,7 +39,9 @@ class Syntax(Node):
 
     Examples:
       - syntax = "proto3";
+
     """
+
     value: str  # raw string literal content, not unescaped
 
 
@@ -46,7 +53,9 @@ class Import(Node):
       - import "google/protobuf/timestamp.proto";
       - import public "other.proto";
       - import weak "deprecated.proto";
+
     """
+
     path: str  # raw string literal content, not unescaped
     modifier: str | None = None  # "weak" | "public" | None
 
@@ -58,7 +67,9 @@ class Package(Node):
     Examples:
       - package google.protobuf;
       - package com.example.foo;
+
     """
+
     name: QualifiedName
 
 
@@ -70,6 +81,7 @@ class OptionName(Node):
       - java_package
       - (my.custom).opt
       - (my.custom).opt.sub
+
     """
 
     # If custom is False, base is the full dotted name and suffix must be empty.
@@ -101,7 +113,9 @@ class Constant(Node):
       - true / false (boolean)
       - MyEnum.VALUE (identifier)
       - { foo: 1, bar: "baz" } (aggregate/message literal)
+
     """
+
     kind: TerminalSymbol  # Terminal symbol representing the constant type
     value: object
 
@@ -109,28 +123,30 @@ class Constant(Node):
         """Format a constant value."""
         kind_name = self.kind.name
 
+        value = "/*unknown-const*/"
+
         if kind_name == "INT":
-            return str(self.value)
+            value = str(self.value)
 
         if kind_name == "FLOAT":
-            return str(self.value)
+            value = str(self.value)
 
         if kind_name == "STRING":
-            return '"' + str(self.value).replace('"', '\\"') + '"'
+            value = '"' + str(self.value).replace('"', '\\"') + '"'
 
         if kind_name in ("true", "false"):
-            return "true" if self.value else "false"
+            value = "true" if self.value else "false"
 
         if kind_name == "ident":
-            return str(self.value)
+            value = str(self.value)
 
         if kind_name == "aggregate":
             fields = []
-            for key, value in self.value:  # type: ignore[assignment]
+            for key, value in self.value:
                 fields.append(f"{key}: {value.format()}")
-            return "{ " + ", ".join(fields) + " }"
+            value = "{ " + ", ".join(fields) + " }"
 
-        return "/*unknown-const*/"
+        return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,7 +157,9 @@ class Option(Node):
       - java_package = "com.example.foo"
       - deprecated = true
       - (my.custom.option) = "value"
+
     """
+
     name: OptionName
     value: Constant
 
@@ -157,7 +175,9 @@ class OptionStmt(Node):
     Examples:
       - option java_package = "com.example";
       - option optimize_for = SPEED;
+
     """
+
     option: Option
 
     def format(self, indent: int = 0) -> str:
@@ -172,7 +192,9 @@ class FieldOption(Node):
     Examples:
       - string name = 1 [deprecated = true];
       - int32 id = 2 [json_name = "userId"];
+
     """
+
     option: Option
 
 
@@ -185,13 +207,15 @@ class Field(Node):
       - repeated int32 values = 2;
       - map<string, int32> scores = 3;
       - MyMessage msg = 4 [deprecated = true];
+
     """
+
     name: str
     number: int
     type_name: QualifiedName | None = None
     scalar_type: str | None = None
     map_key_type: str | None = None  # only for map<k,v>
-    map_value: "TypeRef | None" = None
+    map_value: TypeRef | None = None
     repeated: bool = False
     options: tuple[FieldOption, ...] = ()
 
@@ -237,6 +261,7 @@ class TypeRef(Node):
       - string
       - MyMessage
       - .google.protobuf.Timestamp
+
     """
 
     type_name: QualifiedName | None = None
@@ -262,18 +287,18 @@ class Oneof(Node):
           string name = 1;
           int32 value = 2;
         }
+
     """
+
     name: str
     fields: tuple[Field, ...] = ()
 
     def format(self, indent: int = 0) -> list[str]:
         """Format a oneof definition."""
         output = [_indent(f"oneof {self.name} {{", indent)]
-
-        for field in self.fields:
-            output.append(_indent(field.format() + ";", indent + 2))
-
+        output.extend(_indent(e.format() + ";", indent + 2) for e in self.fields)
         output.append(_indent("}", indent))
+
         return output
 
 
@@ -285,7 +310,9 @@ class ReservedRange(Node):
       - 2 (single field number)
       - 9 to 11 (range)
       - 15 to max (open-ended range)
+
     """
+
     start: int
     end: int | None = None  # inclusive; None means single value
     end_is_max: bool = False
@@ -294,10 +321,9 @@ class ReservedRange(Node):
         """Format a reserved range."""
         if self.end_is_max:
             return f"{self.start} to max"
-        elif self.end is None:
+        if self.end is None:
             return str(self.start)
-        else:
-            return f"{self.start} to {self.end}"
+        return f"{self.start} to {self.end}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -308,7 +334,9 @@ class Reserved(Node):
       - reserved 2, 15, 9 to 11;
       - reserved "foo", "bar";
       - reserved 1 to max;
+
     """
+
     ranges: tuple[ReservedRange, ...] = ()
     names: tuple[str, ...] = ()
 
@@ -333,7 +361,9 @@ class EnumValue(Node):
       - UNKNOWN = 0;
       - STARTED = 1 [deprecated = true];
       - COMPLETED = 2;
+
     """
+
     name: str
     number: int
     options: tuple[FieldOption, ...] = ()
@@ -359,9 +389,11 @@ class Enum(Node):
           STARTED = 1;
           COMPLETED = 2;
         }
+
     """
+
     name: str
-    body: tuple[OptionStmt | Reserved | EnumValue | "Message" | "Enum", ...] = ()
+    body: tuple[OptionStmt | Reserved | EnumValue | Message | Enum, ...] = ()
 
     def format(self, indent: int = 0) -> list[str]:
         """Format an enum definition."""
@@ -377,14 +409,12 @@ class Enum(Node):
             elif isinstance(element, EnumValue):
                 output.append(element.format(indent + 2))
 
-            elif isinstance(element, Message):
-                output.extend(element.format(indent + 2))
-
-            elif isinstance(element, Enum):
+            elif isinstance(element, (Message, Enum)):
                 output.extend(element.format(indent + 2))
 
             else:
-                output.append(_indent(f"/* unsupported enum element: {type(element).__name__} */", indent + 2))
+                msg = f"/* unsupported enum element: {type(element).__name__} */"
+                output.append(_indent(msg, indent + 2))
 
         output.append(_indent("}", indent))
         return output
@@ -400,9 +430,11 @@ class Message(Node):
           int32 age = 2;
           repeated string emails = 3;
         }
+
     """
+
     name: str
-    body: tuple[OptionStmt | Reserved | Field | Oneof | "Message" | Enum, ...] = ()
+    body: tuple[OptionStmt | Reserved | Field | Oneof | Message | Enum, ...] = ()
 
     def format(self, indent: int = 0) -> list[str]:
         """Format a message definition."""
@@ -412,23 +444,15 @@ class Message(Node):
             if isinstance(element, OptionStmt):
                 output.append(element.format(indent + 2))
 
-            elif isinstance(element, Reserved):
+            elif isinstance(element, (Reserved, Field)):
                 output.append(_indent(element.format() + ";", indent + 2))
 
-            elif isinstance(element, Field):
-                output.append(_indent(element.format() + ";", indent + 2))
-
-            elif isinstance(element, Oneof):
-                output.extend(element.format(indent + 2))
-
-            elif isinstance(element, Enum):
-                output.extend(element.format(indent + 2))
-
-            elif isinstance(element, Message):
+            elif isinstance(element, (Oneof, Enum, Message)):
                 output.extend(element.format(indent + 2))
 
             else:
-                output.append(_indent(f"/* unsupported message element: {type(element).__name__} */", indent + 2))
+                msg = f"/* unsupported message element: {type(element).__name__} */"
+                output.append(_indent(msg, indent + 2))
 
         output.append(_indent("}", indent))
         return output
@@ -444,7 +468,9 @@ class Rpc(Node):
       - rpc UpdateUser (User) returns (User) {
           option (google.api.http) = { post: "/v1/user" };
         }
+
     """
+
     name: str
     request: TypeRef
     response: TypeRef
@@ -469,8 +495,7 @@ class Rpc(Node):
             return [header + ";"]
 
         output = [header + " {"]
-        for option in self.options:
-            output.append(option.format(indent + 2))
+        output.extend(option.format(indent + 2) for option in self.options)
 
         output.append(_indent("}", indent))
         return output
@@ -485,7 +510,9 @@ class Service(Node):
           rpc GetUser (UserId) returns (User);
           rpc ListUsers (ListRequest) returns (ListResponse);
         }
+
     """
+
     name: str
     body: tuple[OptionStmt | Rpc, ...] = ()
 
@@ -501,7 +528,8 @@ class Service(Node):
                 output.extend(element.format(indent + 2))
 
             else:
-                output.append(_indent(f"/* unsupported service element: {type(element).__name__} */", indent + 2))
+                msg = f"/* unsupported service element: {type(element).__name__} */"
+                output.append(_indent(msg, indent + 2))
 
         output.append(_indent("}", indent))
         return output
@@ -525,7 +553,9 @@ class ProtoFile(Node):
           string name = 1;
           int32 age = 2;
         }
+
     """
+
     syntax: Syntax | None = None
     items: tuple[TopLevel, ...] = ()
 
@@ -570,13 +600,7 @@ class ProtoFile(Node):
             if isinstance(declaration, OptionStmt):
                 output.append(declaration.format(0))
 
-            elif isinstance(declaration, Message):
-                output.extend(declaration.format(0))
-
-            elif isinstance(declaration, Enum):
-                output.extend(declaration.format(0))
-
-            elif isinstance(declaration, Service):
+            elif isinstance(declaration, (Message, Enum, Service)):
                 output.extend(declaration.format(0))
 
             else:
