@@ -11,7 +11,7 @@ from .grammar import (
     Token,
     join_span,
 )
-from .lalr import ParseTable, build_lalr_table, expected_terminals
+from .lalr import ParseTable, TableBuilder, expected_terminals
 
 # For backward compatibility in type hints
 Terminal = TerminalSymbol
@@ -33,7 +33,7 @@ class Parser:
 
     @classmethod
     def for_grammar(cls, grammar: Grammar) -> "Parser":
-        return cls(grammar=grammar, table=build_lalr_table(grammar))
+        return cls(grammar=grammar, table=TableBuilder(grammar).build())
 
     def parse(self, tokens: list[Token]) -> object:
         # State stack + semantic value stack

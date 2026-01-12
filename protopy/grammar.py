@@ -1,82 +1,12 @@
-"""
-Grammar definition for proto3.
-"""
-
-import inspect
 import itertools
 from dataclasses import dataclass
-from typing import Callable, Generic, TypeVar, Union, \
-    get_type_hints, get_origin, get_args
+from typing import Callable, Union, get_type_hints, get_origin, get_args
 
 from . import ast
-from .symbol import TerminalSymbol, NonTerminalSymbol, Symbol
+from .symbol import TerminalSymbol, NonTerminalSymbol, Symbol, \
+    NonTerminalType, Terminal, NonTerminal
 from .errors import ParseError
 from .spans import Position, Span
-
-
-T = TypeVar('T')
-
-
-# Marker base classes for type annotations
-class _TerminalType:
-    symbol: TerminalSymbol
-
-
-class _NonTerminalType:
-    symbol: NonTerminalSymbol
-
-
-class _NonTerminalGenericAlias:
-    """Wrapper for nonterminal generic return types."""
-    def __init__(self, nt_type: type[_NonTerminalType], type_param):
-        self.nt_type = nt_type
-        self.type_param = type_param
-    
-    def __repr__(self):
-        return f"{self.nt_type.__name__}[{self.type_param}]"
-
-
-def Terminal(name: str) -> type[_TerminalType]:
-    """
-    Create a terminal type that can be used in annotations.
-    
-    Returns a type class with:
-    - symbol attribute containing the runtime symbol instance
-    - name attribute for convenient access
-    """
-    instance = TerminalSymbol(name)
-    
-    class _T(_TerminalType):
-        symbol = instance
-        name = instance.name
-    
-    _T.__name__ = name
-    _T.__qualname__ = name
-    return _T
-
-
-def NonTerminal(name: str) -> type[_NonTerminalType]:
-    """
-    Create a nonterminal type that can be used in annotations.
-    
-    Returns a type class with:
-    - symbol attribute containing the runtime symbol instance
-    - name attribute for convenient access
-    - __getitem__ to support generic return types like NonTerminal[ast.Node]
-    """
-    instance = NonTerminalSymbol(name)
-    
-    class _NT(_NonTerminalType):
-        symbol = instance
-        name = instance.name
-        
-        def __class_getitem__(cls, item):
-            """Support generic syntax: ServiceElem[ast.Service]"""
-            return _NonTerminalGenericAlias(cls, item)
-    
-    _NT.__name__ = name
-    _NT.__qualname__ = name
-    return _NT
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,22 +14,21 @@ class Token:
     kind: TerminalSymbol
     lexeme: str
     span: Span
-    
-    def to_constant(self) -> "ast.Constant":
-        """Convert token to ast.Constant based on its kind."""
-        if self.kind == INT.symbol:
+
+    def to_constant(self) -> ast.Constant:
+        if self.kind == INT:
             value = int(self.lexeme)
-        elif self.kind == FLOAT.symbol:
+        elif self.kind == FLOAT:
             value = float(self.lexeme)
-        elif self.kind == STRING.symbol:
+        elif self.kind == STRING:
             value = self.lexeme
-        elif self.kind == TRUE.symbol:
+        elif self.kind == TRUE:
             value = True
-        elif self.kind == FALSE.symbol:
+        elif self.kind == FALSE:
             value = False
         else:
             raise ValueError(f"Cannot convert {self.kind} to Constant")
-        
+
         return ast.Constant(span=self.span, kind=self.kind, value=value)
 
 
@@ -108,7 +37,7 @@ class Production:
     head: NonTerminalSymbol
     body: tuple[Symbol, ...]
     action: Callable[[tuple], object]
-    
+
     def __str__(self) -> str:
         body_str = " ".join(str(s) for s in self.body)
         return f"{self.head} -> {body_str}"
@@ -131,12 +60,12 @@ CONST_AGGREGATE = TerminalSymbol("aggregate")
 def eps() -> Epsilon:
     """
     Marker for epsilon (empty) productions.
-    
+
     Usage in type annotations:
         # Direct epsilon production:
         def act_empty(values: eps) -> Nt_Foo[list]:
             return []
-        
+
         # Optional element in union:
         def act_optional(values: tuple[COMMA] | Epsilon) -> Nt_Opt[bool]:
             return len(values) > 0
@@ -327,10 +256,10 @@ MAP_KEY_TYPES = frozenset([
 
 class GrammarExtractor:
     """Extracts grammar productions from annotated methods."""
-    
+
     def __init__(self):
         self.productions: list[Production] = []
-    
+
     def _extract_from_values_type(
         self,
         values_type,
@@ -341,9 +270,9 @@ class GrammarExtractor:
         # Handle epsilon productions: values: eps
         if values_type is eps:
             return [Production(head=head, body=tuple(), action=func)]
-        
+
         origin_type = get_origin(values_type)
-        
+
         # Handle union at top level: tuple[A, B] | eps
         if origin_type is Union:
             productions = []
@@ -352,17 +281,17 @@ class GrammarExtractor:
                     self._extract_from_values_type(alt, head, func)
                 )
             return productions
-        
+
         # Handle tuple types
         if origin_type is not tuple:
             return []  # We only support tuple
-        
+
         body_types = get_args(values_type)
-        
+
         # Empty tuple means epsilon
         if not body_types:
             return [Production(head=head, body=tuple(), action=func)]
-        
+
         # Convert body_types to list of alternatives
         # tuple[NT, T | NT | NT, T]
         #   body_types -> [NT1, T1 | NT2 | NT3, T2]
@@ -380,47 +309,41 @@ class GrammarExtractor:
             else:
                 # Single type: extract symbol
                 types.append([body_type.symbol])
-        
+
         return [
             Production(head=head, body=tuple(combo), action=func)
             for combo in itertools.product(*types)
         ]
-    
+
     def extract_from_function(self, func: Callable) -> list[Production]:
         """
         Extract production rule(s) from a function's type annotations.
-        
+
         Can return multiple productions if values contains a union type.
         Returns empty list if the function doesn't have the right annotations.
         """
         try:
-            hints = get_type_hints(func, globalns=globals(), include_extras=True)
+            hints = get_type_hints(
+                func, globalns=globals(), include_extras=True)
         except Exception:
             return []
-        
+
         if 'return' not in hints or 'values' not in hints:
             return []
-        
+
         # Extract head from return type
         raw_return = func.__annotations__.get('return')
-        
-        # Extract NonTerminal instance from annotation
-        head = None
-        if isinstance(raw_return, _NonTerminalGenericAlias):
-            # ServiceElem[ast.Service] -> extracts ServiceElem.symbol
-            head = raw_return.nt_type.symbol
-        elif isinstance(raw_return, type) and issubclass(raw_return, _NonTerminalType):
-            # Direct nonterminal type class
-            head = raw_return.symbol
-        
-        if head is None:
+        if not issubclass(raw_return, NonTerminalType):
             return []
-        
+
+        # Extract NonTerminal instance from annotation
+        head = raw_return.symbol
+
         # Extract body from values parameter
         values_type = hints['values']
-        
+
         return self._extract_from_values_type(values_type, head, func)
-    
+
     def extract_from_class(self, cls: type) -> list[Production]:
         """Extract all productions from a class with annotated methods."""
         for name in dir(cls):
@@ -429,7 +352,7 @@ class GrammarExtractor:
                 if callable(attr):
                     prods = self.extract_from_function(attr)
                     self.productions.extend(prods)
-        
+
         return self.productions
 
 
@@ -455,25 +378,25 @@ def join_span(*values: Token | ast.Node) -> Span:
 class GrammarBuilder:
     """
     Proto3 grammar definition using type-annotation-driven productions.
-    
+
     Each act_* method defines a production rule through its type annotations:
     - Parameter type: tuple of RHS symbols (Terminal/NonTerminal instances)
     - Return type: NonTerminal[ActualType] indicating LHS (e.g., QualifiedName[ast.QualifiedName])
     """
-    
+
     _cache: Grammar | None = None
-    
+
     # -----------------------------------------------------------------------
     # Semantic actions: Constants
     # -----------------------------------------------------------------------
-    
+
     def act_const(
         values: tuple[
             INT | FLOAT | STRING | TRUE | FALSE | QualifiedName | Aggregate
         ]
     ) -> Const[ast.Constant]:
         value = values[0]
-        
+
         if isinstance(value, Token):
             # Literal constant (int, float, string, bool)
             return value.to_constant()
@@ -485,20 +408,20 @@ class GrammarBuilder:
         else:
             # Aggregate constant (already an ast.Constant)
             return value
-    
+
     # -----------------------------------------------------------------------
     # Semantic actions: Qualified names
     # -----------------------------------------------------------------------
-    
+
     def act_ident(values: tuple[IDENT | SYNTAX]) -> Ident[object]:
         return values[0]
-    
+
     def act_name_tail(values: tuple[DOT, Ident, NameTail] | Epsilon) -> NameTail[list]:
         if len(values) == 0:
             return []
 
         return [values[1]] + values[2]
-    
+
     def act_qualified_name_absolute(
         values: tuple[DOT, Ident, NameTail]
     ) -> QualifiedName[ast.QualifiedName]:
@@ -510,7 +433,7 @@ class GrammarBuilder:
             absolute=True,
             parts=tuple([ident_tok.lexeme] + [tok.lexeme for tok in tail]),
         )
-    
+
     def act_qualified_name_relative(
         values: tuple[Ident, NameTail]
     ) -> QualifiedName[ast.QualifiedName]:
@@ -522,7 +445,7 @@ class GrammarBuilder:
             absolute=False,
             parts=tuple([ident_tok.lexeme] + [tok.lexeme for tok in tail]),
         )
-    
+
     # -----------------------------------------------------------------------
     # Semantic actions: Aggregates
     # -----------------------------------------------------------------------
@@ -912,7 +835,7 @@ class GrammarBuilder:
     ) -> ReservedRange[ast.ReservedRange]:
         start_tok: Token = values[0]
         end_tok: Token = values[2]
-        
+
         is_max = end_tok.kind == MAX.symbol
         return ast.ReservedRange(
             span=join_span(start_tok, end_tok),
@@ -1241,16 +1164,16 @@ class GrammarBuilder:
             span=file_span, syntax=syntax, items=tuple(items),
             imports=tuple(imports), package=package
         )
-    
+
     @classmethod
     def build(cls) -> Grammar:
         """Build and cache the proto3 grammar."""
         if cls._cache is not None:
             return cls._cache
-        
+
         extractor = GrammarExtractor()
         productions = extractor.extract_from_class(cls)
-        
+
         cls._cache = Grammar(start=File.symbol, productions=tuple(productions))
         return cls._cache
 

@@ -340,22 +340,6 @@ class TableBuilder:
         return self._build_action_goto_tables(lalr_states, lalr_transitions, symbols)
 
 
-def build_lalr_table(grammar: Grammar) -> ParseTable:
-    """Build an LALR parse table for the given grammar.
-
-    Args:
-        grammar: The grammar to build a parse table for
-
-    Returns:
-        ParseTable containing ACTION and GOTO tables
-
-    Raises:
-        GrammarAnalysisError: If the grammar has conflicts
-    """
-    builder = TableBuilder(grammar)
-    return builder.build()
-
-
 def expected_terminals(table: ParseTable, state: int) -> set[Terminal]:
     """Get the set of terminals expected in a given parser state."""
     return set(table.action.get(state, {}).keys())
