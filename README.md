@@ -1,23 +1,16 @@
-# protopy
+protopy
+=======
 
-`protopy` is a **proto3-only** `.proto` parser that:
+`protopy` is a LALR(1) parser for protobuf.
 
-- Tokenizes and parses protobuf source **without depending on `protoc`**.
-- Uses a **from-scratch LALR(1)** parser (tables generated from an explicit grammar).
-- Produces a **custom AST** designed for downstream tooling (linters, generators, indexers).
-- Supports parsing a **set of files** with **import resolution**.
-- Reports **user-friendly errors** with precise file/line/column locations.
 
-## Install (dev)
+**Disclaimer**: This project is heavily assisted by code agents.
 
-This project uses [`uv`](https://github.com/astral-sh/uv).
 
-```bash
-uv sync
-uv run pytest
-```
+*Note that currently only proto3 syntax is supported.*
 
-## Quickstart
+Quickstart
+----------
 
 ```python
 from protopy import parse_files
@@ -31,10 +24,7 @@ result = parse_files(
 root_ast = result.files[result.entrypoints[0]]
 ```
 
-## Scope
+License
+-------
 
-- **Supported**: proto3 syntax (messages, enums, services, options, imports, packages, oneof,
-  fields, map fields, reserved, nested types, RPC definitions, literals, comments).
-- **Not supported (for now)**: proto2-only constructs (e.g. `required`, `extensions`),
-  custom options beyond syntactic parsing, edition-specific features.
-
+MIT(LICENSE)
