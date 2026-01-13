@@ -5,17 +5,13 @@ from dataclasses import dataclass
 from .errors import ParseError
 from .grammar import (
     Grammar,
-    NonTerminalSymbol,
+    NonTerminal,
     Production,
-    TerminalSymbol,
+    Terminal,
     Token,
     join_span,
 )
-from .lalr import ParseTable, TableBuilder, expected_terminals
-
-# For backward compatibility in type hints
-Terminal = TerminalSymbol
-NonTerminal = NonTerminalSymbol
+from .lalr import ParseTable, TableBuilder
 
 
 def _token_display(term: Terminal) -> str:
@@ -44,9 +40,9 @@ class Parser:
         while True:
             state = states[-1]
             tok = tokens[i]
-            act = self.table.action.get(state, {}).get(tok.kind)  # tok.kind is Terminal
+            act = self.table.table.get(state, {}).get(tok.kind)  # tok.kind is Terminal
             if act is None:
-                exp = sorted(expected_terminals(self.table, state), key=lambda t: t.name)
+                exp = sorted(self.table.terminals(state=state), key=lambda t: t.name)
                 exp_s = ", ".join(_token_display(t) for t in exp[:12])
                 hint = None
                 if exp:
@@ -75,9 +71,12 @@ class Parser:
                     del states[-k:]
                 out = prod.action(rhs_vals)
                 values.append(out)
-                goto_state = self.table.goto.get(states[-1], {}).get(prod.head)
-                if goto_state is None:
+                goto_action = self.table.table.get(states[-1], {}).get(prod.head)
+                if goto_action is None:
                     raise RuntimeError(f"no goto from state {states[-1]} on {prod.head.name}")
+                goto_kind, goto_state = goto_action
+                if goto_kind != "goto":
+                    raise RuntimeError(f"expected goto action, got {goto_kind}")
                 states.append(goto_state)
                 continue
 

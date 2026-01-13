@@ -39,7 +39,7 @@ target-version = "py314"
 select = ["ALL"]
 ignore = [
   "I001", "D101", "D100", "D102", "D105", "D107", "INP001", "TRY003", "EM102",
-  "ERA001", "BLE001", "Q000", "EM101", "COM812"
+  "ERA001", "BLE001", "Q000", "EM101", "COM812", "RUF002", "E701", "N801"
 ]
 
 [tool.mypy]

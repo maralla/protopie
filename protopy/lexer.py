@@ -5,15 +5,8 @@ from .errors import ParseError
 from .grammar import KEYWORDS, PUNCTUATION, Token
 from .spans import Position, Span
 
-# Import terminal instances (not type classes)
+# Import terminal symbol classes
 from .grammar import EOF, FLOAT, IDENT, INT, STRING
-
-# These are type classes, need their symbol instances
-EOF = EOF.symbol
-FLOAT = FLOAT.symbol
-IDENT = IDENT.symbol
-INT = INT.symbol
-STRING = STRING.symbol
 
 _IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _INT_RE = re.compile(r"[+-]?(?:0|[1-9][0-9]*)")

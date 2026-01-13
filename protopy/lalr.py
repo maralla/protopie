@@ -1,69 +1,103 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import defaultdict
+from dataclasses import dataclass, field
+from typing import cast, TYPE_CHECKING
 
 from .grammar import (
-    EOF as EOF_TYPE,
+    EOF,
+    EPSILON,
+    Epsilon,
     Grammar,
-    NonTerminalSymbol,
     Production,
+)
+from .symbol import (
+    NonTerminal,
     Symbol,
-    TerminalSymbol,
+    Terminal,
 )
 
-# Extract the symbol from the type class
-EOF = EOF_TYPE.symbol
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
-# For backward compatibility in type hints
-Terminal = TerminalSymbol
-NonTerminal = NonTerminalSymbol
+# Type alias (defined before LR1Item since it's used in the class)
+LR0Core = tuple[int, int]  # (production_index, dot_position)
 
 
 @dataclass(frozen=True, slots=True)
 class LR1Item:
     """An LR(1) item: (production_index, dot_position, lookahead_terminal)."""
+
     production_index: int
     dot_position: int
     lookahead: Terminal
 
-    def core(self) -> tuple[int, int]:
+    def core(self) -> LR0Core:
         """Return the LR(0) core (production_index, dot_position)."""
         return (self.production_index, self.dot_position)
+
+    def step(self) -> LR1Item:
+        """Return a new item with dot moved one position forward."""
+        return LR1Item(self.production_index, self.dot_position + 1, self.lookahead)
+
+
+# Type aliases for complex LALR types (defined after LR1Item)
+StateCore = frozenset[LR0Core]  # Frozen set of LR(0) cores
+State = set[LR1Item]  # A single LR(1) state
+StateList = list[State]  # List of states
+StateTransitions = dict[tuple[int, Symbol], int]  # (state_index, symbol) -> next_state_index
+LookaheadMap = dict[LR0Core, set[Terminal]]  # Core -> set of lookahead terminals
+
+
+@dataclass(slots=True)
+class StateCoreInfo:
+    """Information for a state core during LALR merging."""
+
+    lookaheads: LookaheadMap = field(default_factory=lambda: defaultdict(set))
+    state_indices: list[int] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
 class ParseTable:
-    """ACTION / GOTO tables for an LALR parser.
+    """Unified parse table for an LALR parser.
 
-    ACTION[state][terminal] = ("shift", next_state) | ("reduce", production_index) | ("accept", 0)
-    GOTO[state][nonterminal] = next_state
+    table[state][symbol] = action
+    - Terminals: ("shift", next_state) | ("reduce", production_index) | ("accept", 0)
+    - Nonterminals: ("goto", next_state)
     """
-    action: dict[int, dict[Terminal, tuple[str, int]]]
-    goto: dict[int, dict[NonTerminal, int]]
+
+    table: Mapping[int, Mapping[Symbol, tuple[str, int]]]
+
+    def terminals(self, *, state: int) -> set[Terminal]:
+        """Get the set of terminals expected in a given parser state."""
+        return {
+            symbol
+            for symbol in self.table.get(state, {})
+            if symbol.is_terminal()
+        }
 
 
 class GrammarAnalysisError(Exception):
     """Raised when grammar analysis finds conflicts or issues."""
-    pass
+
 
 
 class TableBuilder:
     """Builds LALR parse tables from a grammar."""
 
-    def __init__(self, grammar: Grammar):
+    def __init__(self, grammar: Grammar) -> None:
         self.grammar = grammar
-        self.epsilon = object()  # Sentinel for epsilon in FIRST sets
 
         # Collect symbols
         self.nonterminals: set[NonTerminal] = {prod.head for prod in grammar.productions}
         self.terminals: set[Terminal] = {
             symbol for prod in grammar.productions
             for symbol in prod.body
-            if isinstance(symbol, Terminal)
+            if symbol.is_terminal()
         }
 
         # FIRST sets
-        self.first_sets: dict[Symbol | object, set[Terminal | object]] = {}
+        self.first_sets: dict[Symbol | Epsilon, set[Terminal | Epsilon]] = {}
         self._initialize_first_sets()
         self._compute_first_sets()
 
@@ -93,44 +127,47 @@ class TableBuilder:
                 if len(self.first_sets[production.head]) != before_size:
                     changed = True
 
-    def _first_of_sequence(self, sequence: tuple[Symbol, ...]) -> set[Terminal | object]:
-        """Compute FIRST set of a sequence of symbols."""
-        result: set[Terminal | object] = set()
+    def _first_of_sequence(self, sequence: tuple[Symbol, ...]) -> set[Terminal | Epsilon]:
+        """Compute FIRST set of a sequence of symbols.
+
+        P -> Z β
+
+        => FIRST(P) = FIRST(Z) if ε ∉ FIRST(Z)
+                     (FIRST(Z) - {ε}) ∪ FIRST(β) if ε ∈ FIRST(Z)
+        """
+        result: set[Terminal | Epsilon] = set()
 
         if not sequence:
-            result.add(self.epsilon)
+            result.add(EPSILON)
             return result
 
         for symbol in sequence:
-            # Some terminals can appear only as lookaheads (not in bodies)
-            if symbol not in self.first_sets and isinstance(symbol, Terminal):
-                self.first_sets[symbol] = {symbol}
-
             symbol_first = self.first_sets[symbol]
-            result |= {x for x in symbol_first if x is not self.epsilon}
+            result |= {x for x in symbol_first if x is not EPSILON}
 
-            if self.epsilon not in symbol_first:
+            if EPSILON not in symbol_first:
                 break
         else:
             # All symbols in sequence can derive epsilon
-            result.add(self.epsilon)
+            result.add(EPSILON)
 
         return result
 
     def _create_augmented_grammar(self) -> Grammar:
         """Create augmented grammar with S' -> S production."""
-        start_prime = NonTerminal(self.grammar.start.name + "'")
+        # Dynamically create a new nonterminal class for S'
+        start_prime_name = self.grammar.start.name + "'"
+        start_prime = type(start_prime_name, (NonTerminal,), {'name': start_prime_name})
+        
         augmented_production = Production(
             head=start_prime,
             body=(self.grammar.start,),
             action=lambda values: values[0],
         )
-        productions = (augmented_production,) + self.grammar.productions
+        productions = (augmented_production, *self.grammar.productions)
 
         # Add FIRST set for start_prime
-        if start_prime not in self.first_sets:
-            self.first_sets[start_prime] = set()
-        self.first_sets[start_prime] |= self.first_sets[self.grammar.start]
+        self.first_sets[start_prime] = self.first_sets[self.grammar.start].copy()
 
         return Grammar(start=start_prime, productions=productions)
 
@@ -141,79 +178,70 @@ class TableBuilder:
             if production.head == nonterminal
         )
 
-    def _closure(self, items: set[LR1Item]) -> set[LR1Item]:
+    def _closure(self, items: State) -> State:
         """Compute closure of a set of LR(1) items."""
         result = set(items)
-        changed = True
+        worklist = list(items)  # Process initial items
 
-        while changed:
-            changed = False
-            for item in list(result):
-                production = self.augmented_grammar.productions[item.production_index]
+        while worklist:
+            item = worklist.pop()
+            production = self.augmented_grammar.productions[item.production_index]
 
-                if item.dot_position >= len(production.body):
-                    continue
+            if item.dot_position >= len(production.body):
+                continue
 
-                symbol = production.body[item.dot_position]
-                if not isinstance(symbol, NonTerminal):
-                    continue
+            symbol = production.body[item.dot_position]
+            if not symbol.is_nonterminal():
+                continue
 
-                beta = production.body[item.dot_position + 1:]
-                lookahead_first = self._first_of_sequence(beta + (item.lookahead,))
-                lookaheads = [x for x in lookahead_first if x is not self.epsilon]
+            beta = production.body[item.dot_position + 1:]
+            lookahead_first = self._first_of_sequence((*beta, item.lookahead))
+            # Filter out EPSILON - remaining items are guaranteed to be Terminal
+            lookaheads = [x for x in lookahead_first if x is not EPSILON]
 
-                for production_index in self._productions_for_nonterminal(symbol):
-                    for lookahead in lookaheads:
-                        new_item = LR1Item(production_index, 0, lookahead)  # type: ignore[arg-type]
-                        if new_item not in result:
-                            result.add(new_item)
-                            changed = True
+            for production_index in self._productions_for_nonterminal(symbol):
+                for lookahead in lookaheads:
+                    new_item = LR1Item(production_index, 0, cast('Terminal', lookahead))
+                    if new_item not in result:
+                        result.add(new_item)
+                        worklist.append(new_item)
 
         return result
 
-    def _goto(self, items: set[LR1Item], symbol: Symbol) -> set[LR1Item]:
-        """Compute goto(items, symbol)."""
-        moved: set[LR1Item] = set()
+    def _group_items_by_symbol(self, state: State) -> dict[Symbol, list[LR1Item]]:
+        """Group items by the symbol after their dot position."""
+        groups: dict[Symbol, list[LR1Item]] = {}
 
-        for item in items:
+        for item in state:
             production = self.augmented_grammar.productions[item.production_index]
-            if item.dot_position < len(production.body) and production.body[item.dot_position] == symbol:
-                moved.add(LR1Item(item.production_index, item.dot_position + 1, item.lookahead))
+            if item.dot_position >= len(production.body):
+                continue
 
-        return self._closure(moved) if moved else set()
+            symbol = production.body[item.dot_position]
+            groups.setdefault(symbol, []).append(item)
 
-    def _find_state_index(self, items: set[LR1Item], states: list[set[LR1Item]]) -> int | None:
-        """Find the index of a state in the state list."""
-        for index, state in enumerate(states):
-            if state == items:
-                return index
-        return None
+        return groups
 
-    def _build_lr1_states(self) -> tuple[list[set[LR1Item]], dict[tuple[int, Symbol], int]]:
+    def _build_lr1_states(self) -> tuple[StateList, StateTransitions]:
         """Build canonical LR(1) collection of states."""
-        # Collect all symbols from productions (excluding EOF)
-        symbols: set[Symbol] = set()
-        for production in self.augmented_grammar.productions:
-            symbols |= set(production.body)
-        symbols.discard(EOF)
-
         # Initial state
         initial_state = self._closure({LR1Item(0, 0, EOF)})
-        states: list[set[LR1Item]] = [initial_state]
-        transitions: dict[tuple[int, Symbol], int] = {}
+        states: StateList = [initial_state]
+        transitions: StateTransitions = {}
         work = [0]
 
         while work:
             state_index = work.pop()
             state = states[state_index]
 
-            for symbol in symbols:
-                next_state = self._goto(state, symbol)
-                if not next_state:
-                    continue
+            for symbol, items in self._group_items_by_symbol(state).items():
+                # Move dot past symbol for all items, then compute closure
+                moved = {item.step() for item in items}
+                next_state = self._closure(moved)
 
-                next_index = self._find_state_index(next_state, states)
-                if next_index is None:
+                try:
+                    next_index = states.index(next_state)
+                except ValueError:
                     next_index = len(states)
                     states.append(next_state)
                     work.append(next_index)
@@ -223,104 +251,90 @@ class TableBuilder:
         return states, transitions
 
     def _merge_lr1_to_lalr(
-        self,
-        lr1_states: list[set[LR1Item]],
-        lr1_transitions: dict[tuple[int, Symbol], int]
-    ) -> tuple[list[set[LR1Item]], dict[tuple[int, Symbol], int]]:
+        self, lr1_states: StateList, lr1_transitions: StateTransitions
+    ) -> tuple[StateList, StateTransitions]:
         """Merge LR(1) states with same LR(0) core to create LALR states."""
-        # Group states by their LR(0) core
-        core_to_states: dict[frozenset[tuple[int, int]], list[int]] = {}
+        # Group states by LR(0) core and collect merged lookaheads in one pass
+        core_info: defaultdict[StateCore, StateCoreInfo] = defaultdict(StateCoreInfo)
+
         for index, state in enumerate(lr1_states):
             core = frozenset(item.core() for item in state)
-            core_to_states.setdefault(core, []).append(index)
+            info = core_info[core]
+            info.state_indices.append(index)
 
-        # Merge states with same core
-        merged_states: list[set[LR1Item]] = []
+            for item in state:
+                info.lookaheads[item.core()].add(item.lookahead)
+
+        # Build merged states and index mapping
+        merged_states: StateList = []
         old_to_new_index: dict[int, int] = {}
 
-        for core, state_indices in core_to_states.items():
-            # Union lookaheads for items with same core
-            merged_lookaheads: dict[tuple[int, int], set[Terminal]] = {c: set() for c in core}
-            for state_index in state_indices:
-                for item in lr1_states[state_index]:
-                    merged_lookaheads[(item.production_index, item.dot_position)].add(item.lookahead)
-
+        for info in core_info.values():
             # Create new items with merged lookaheads
-            new_items: set[LR1Item] = set()
-            for (production_index, dot_position), lookaheads in merged_lookaheads.items():
-                for lookahead in lookaheads:
-                    new_items.add(LR1Item(production_index, dot_position, lookahead))
+            new_state: State = {
+                LR1Item(index, dot, lookahead)
+                for (index, dot), lookaheads in info.lookaheads.items()
+                for lookahead in lookaheads
+            }
 
             new_index = len(merged_states)
-            merged_states.append(new_items)
+            merged_states.append(new_state)
 
-            for state_index in state_indices:
+            for state_index in info.state_indices:
                 old_to_new_index[state_index] = new_index
 
         # Remap transitions
-        merged_transitions: dict[tuple[int, Symbol], int] = {}
+        merged_transitions: StateTransitions = {}
         for (state_index, symbol), next_index in lr1_transitions.items():
-            merged_transitions[(old_to_new_index[state_index], symbol)] = old_to_new_index[next_index]
+            remapped_state = old_to_new_index[state_index]
+            merged_transitions[(remapped_state, symbol)] = old_to_new_index[next_index]
 
         return merged_states, merged_transitions
 
-    def _add_action_entry(
+    def _build_state_actions(
         self,
-        action: dict[int, dict[Terminal, tuple[str, int]]],
-        state: int,
-        terminal: Terminal,
-        entry: tuple[str, int]
+        actions: dict[Symbol, tuple[str, int]],
+        state: State,
+        state_index: int,
+        transitions: StateTransitions
     ) -> None:
-        """Add an entry to the ACTION table, checking for conflicts."""
-        row = action.setdefault(state, {})
-        if terminal in row and row[terminal] != entry:
-            raise GrammarAnalysisError(
-                f"conflict in state {state} on {terminal.name}: {row[terminal]} vs {entry}"
-            )
-        row[terminal] = entry
+        """Build ACTION entries for a single state."""
+        for item in state:
+            production = self.augmented_grammar.productions[item.production_index]
 
-    def _build_action_goto_tables(
-        self,
-        states: list[set[LR1Item]],
-        transitions: dict[tuple[int, Symbol], int],
-        symbols: set[Symbol]
-    ) -> ParseTable:
-        """Build ACTION and GOTO tables from LALR states."""
-        action: dict[int, dict[Terminal, tuple[str, int]]] = {}
-        goto_table: dict[int, dict[NonTerminal, int]] = {}
+            state_action = None
+            terminal = None
 
-        for state_index, state in enumerate(states):
-            for item in state:
-                production = self.augmented_grammar.productions[item.production_index]
+            # Shift action
+            if item.dot_position < len(production.body):
+                symbol = production.body[item.dot_position]
+                if not symbol.is_terminal():
+                    continue
 
-                # Shift action
-                if item.dot_position < len(production.body):
-                    symbol = production.body[item.dot_position]
-                    if isinstance(symbol, Terminal):
-                        next_state = transitions.get((state_index, symbol))
-                        if next_state is not None:
-                            self._add_action_entry(action, state_index, symbol, ("shift", next_state))
-                else:
-                    # Reduce or accept action
-                    if item.production_index == 0 and item.lookahead == EOF:
-                        self._add_action_entry(action, state_index, EOF, ("accept", 0))
-                    else:
-                        # Reduce by production in original grammar (exclude augmented production)
-                        self._add_action_entry(
-                            action,
-                            state_index,
-                            item.lookahead,
-                            ("reduce", item.production_index - 1)
-                        )
+                next_state = transitions.get((state_index, symbol))
+                if next_state is not None:
+                    terminal = symbol
+                    state_action = ("shift", next_state)
+            # Reduce or accept action
+            elif item.production_index == 0 and item.lookahead == EOF:
+                terminal = EOF
+                state_action = ("accept", 0)
+            else:
+                # Reduce by production in original grammar (exclude augmented production)
+                terminal = item.lookahead
+                state_action = ("reduce", item.production_index - 1)
 
-            # GOTO entries for nonterminals
-            for symbol in symbols:
-                if isinstance(symbol, NonTerminal):
-                    next_state = transitions.get((state_index, symbol))
-                    if next_state is not None:
-                        goto_table.setdefault(state_index, {})[symbol] = next_state
+            if not state_action or terminal is None:
+                continue
 
-        return ParseTable(action=action, goto=goto_table)
+            existing = actions.get(terminal)
+            if existing is not None and existing != state_action:
+                raise GrammarAnalysisError(
+                    f"conflict in state {state_index} on {terminal.name}: "
+                    f"{existing} vs {state_action}"
+                )
+
+            actions[terminal] = state_action
 
     def build(self) -> ParseTable:
         """Build the complete LALR parse table."""
@@ -330,26 +344,17 @@ class TableBuilder:
         # Merge to LALR
         lalr_states, lalr_transitions = self._merge_lr1_to_lalr(lr1_states, lr1_transitions)
 
-        # Collect symbols
-        symbols: set[Symbol] = set()
-        for production in self.augmented_grammar.productions:
-            symbols |= set(production.body)
-        symbols.discard(EOF)
+        # Build unified parse table
+        table: defaultdict[int, dict[Symbol, tuple[str, int]]] = defaultdict(dict)
 
-        # Build ACTION/GOTO tables
-        return self._build_action_goto_tables(lalr_states, lalr_transitions, symbols)
+        # Add ACTION entries (terminals)
+        for state_index, state in enumerate(lalr_states):
+            actions = table[state_index]
+            self._build_state_actions(actions, state, state_index, lalr_transitions)
 
+        # Add GOTO entries (nonterminals)
+        for (state_index, sym), next_state in lalr_transitions.items():
+            if sym.is_nonterminal():
+                table[state_index][sym] = ("goto", next_state)
 
-def expected_terminals(table: ParseTable, state: int) -> set[Terminal]:
-    """Get the set of terminals expected in a given parser state."""
-    return set(table.action.get(state, {}).keys())
-
-
-def all_terminals(grammar: Grammar) -> set[Terminal]:
-    """Get all terminals used in the grammar."""
-    terminals: set[Terminal] = set()
-    for production in grammar.productions:
-        for symbol in production.body:
-            if isinstance(symbol, Terminal):
-                terminals.add(symbol)
-    return terminals
+        return ParseTable(table=table)

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .spans import Span
-    from .symbol import TerminalSymbol
+    from .symbol import Terminal
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,8 +116,8 @@ class Constant(Node):
 
     """
 
-    kind: TerminalSymbol  # Terminal symbol representing the constant type
-    value: object
+    kind: type[Terminal]  # Terminal symbol representing the constant type
+    value: int | float | str | bool | QualifiedName
 
     def format(self) -> str:
         """Format a constant value."""

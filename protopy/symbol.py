@@ -1,86 +1,53 @@
-from dataclasses import dataclass
+class _Meta(type):
+    def __repr__(cls) -> str:
+        return cls.__name__
+
+    def is_terminal(cls) -> bool:
+        return issubclass(cls, Terminal)
+
+    def is_nonterminal(cls) -> bool:
+        return issubclass(cls, NonTerminal)
 
 
-@dataclass(frozen=True, slots=True)
-class TerminalSymbol:
-    """A terminal symbol in the grammar."""
+class Terminal(metaclass=_Meta):
+    """Base class for terminal symbols in the grammar.
+
+    Examples:
+        class ENUM(Terminal, name="enum"): pass
+        class IDENT(Terminal): pass  # name defaults to "IDENT"
+
+    """
+
     name: str
 
-    def __str__(self) -> str:
-        return f"T({self.name})"
+    def __init_subclass__(cls, name: str | None = None, **kwargs: object) -> None:
+        """Automatically set name from class name if not provided."""
+        if name is not None:
+            cls.name = name
+        elif not hasattr(cls, 'name'):
+            cls.name = cls.__name__
 
-    def __repr__(self) -> str:
-        return f"Terminal({self.name!r})"
-
-    def __eq__(self, other: Symbol | TerminalType | NonTerminalType):
-        if isinstance(other, Symbol):
-            return self.name == other.name
-
-        return self.name == other.symbol.name
+        super().__init_subclass__(**kwargs)
 
 
-@dataclass(frozen=True, slots=True)
-class NonTerminalSymbol:
-    """A non-terminal symbol in the grammar."""
+class NonTerminal(metaclass=_Meta):
+    """Base class for non-terminal symbols in the grammar."""
+
     name: str
 
-    def __str__(self) -> str:
-        return f"N({self.name})"
+    def __init__(self, value: object = None) -> None:
+        self.value = value
 
-    def __repr__(self) -> str:
-        return f"NonTerminal({self.name!r})"
+    def __init_subclass__(cls) -> None:
+        """Automatically set name from class name if not provided."""
+        if not hasattr(cls, 'name'):
+            cls.name = cls.__name__
+
+    def __class_getitem__(cls, item: object) -> type:
+        """Support generic syntax for type hints: QualifiedName[ast.QualifiedName]."""
+        # For non-terminals, this is mainly for type hint support, just return cls
+        return cls
 
 
 # Type alias for any symbol
-Symbol = TerminalSymbol | NonTerminalSymbol
-
-
-class TerminalType:
-    symbol: TerminalSymbol
-
-
-class NonTerminalType:
-    symbol: NonTerminalSymbol
-
-
-def Terminal(name: str) -> type[TerminalType]:
-    """
-    Create a terminal type that can be used in annotations.
-
-    Returns a type class with:
-    - symbol attribute containing the runtime symbol instance
-    - name attribute for convenient access
-    """
-    instance = TerminalSymbol(name)
-
-    class _T(TerminalType):
-        symbol = instance
-        name = instance.name
-
-    _T.__name__ = name
-    _T.__qualname__ = name
-    return _T
-
-
-def NonTerminal(name: str) -> type[NonTerminalType]:
-    """
-    Create a nonterminal type that can be used in annotations.
-
-    Returns a type class with:
-    - symbol attribute containing the runtime symbol instance
-    - name attribute for convenient access
-    - __getitem__ to support generic return types like NonTerminal[ast.Node]
-    """
-    instance = NonTerminalSymbol(name)
-
-    class _NT(NonTerminalType):
-        symbol = instance
-        name = instance.name
-
-        def __class_getitem__(cls, item):
-            """Support generic syntax: ServiceElem[ast.Service]"""
-            return cls
-
-    _NT.__name__ = name
-    _NT.__qualname__ = name
-    return _NT
+Symbol = type[Terminal] | type[NonTerminal]
