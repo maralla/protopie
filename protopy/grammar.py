@@ -341,7 +341,7 @@ class GrammarBuilder:
     @staticmethod
     def act_dotted_name_eps(values: Epsilon) -> ast.DottedName:
         _ = values
-        return ast.DottedName()
+        return ast.DottedName(span=Span.empty())
 
     @staticmethod
     def act_dotted_name(values: tuple[DOT, ast.Ident, ast.DottedName]) -> ast.DottedName:
@@ -386,7 +386,7 @@ class GrammarBuilder:
     @staticmethod
     def act_message_field_literal_eps(values: Epsilon) -> ast.MessageFields:
         _ = values
-        return ast.MessageFields()
+        return ast.MessageFields(span=Span.empty())
 
     @staticmethod
     def act_message_field_literal_single(values: tuple[ast.MessageField]) -> ast.MessageFields:
@@ -411,7 +411,7 @@ class GrammarBuilder:
     @staticmethod
     def act_option_suffix_eps(values: Epsilon) -> ast.OptionSuffix:
         _ = values
-        return ast.OptionSuffix()
+        return ast.OptionSuffix(span=Span.empty())
 
     @staticmethod
     def act_option_suffix(values: tuple[DOT, ast.Ident, ast.OptionSuffix]) -> ast.OptionSuffix:
@@ -504,7 +504,7 @@ class GrammarBuilder:
     @staticmethod
     def act_field_option_eps(values: Epsilon) -> ast.FieldOptionItems:
         _ = values
-        return  ast.FieldOptionItems()
+        return  ast.FieldOptionItems(span=Span.empty())
 
     @staticmethod
     def act_field_option_single(values: tuple[ast.Option]) -> ast.FieldOptionItems:
@@ -522,7 +522,7 @@ class GrammarBuilder:
     @staticmethod
     def act_field_options_eps(values: Epsilon) -> ast.FieldOptions:
         _ = values
-        return ast.FieldOptions()
+        return ast.FieldOptions(span=Span.empty())
 
     @staticmethod
     def act_field_options(values: tuple[LBRACKET, ast.FieldOptionItems, RBRACKET]) -> ast.FieldOptions:
@@ -546,7 +546,7 @@ class GrammarBuilder:
     @staticmethod
     def act_field_label_eps(values: Epsilon) -> ast.FieldLabel:
         _ = values
-        return ast.FieldLabel(repeated=False)
+        return ast.FieldLabel(span=Span.empty(), repeated=False)
 
     @staticmethod
     def act_field_label(values: tuple[REPEATED]) -> ast.FieldLabel:
@@ -596,7 +596,7 @@ class GrammarBuilder:
             name=values[1],
             number=ast.PrimitiveConstant(span=values[3].span, kind=INT, value=values[3].lexeme),
             field_type=values[0],
-            label=ast.FieldLabel(none=True),
+            label=ast.FieldLabel(span=Span.empty(), none=True),
             options=values[4]
         )
 
@@ -609,7 +609,7 @@ class GrammarBuilder:
     @staticmethod
     def act_oneof_body_eps(values: Epsilon) -> ast.OneofBody:
         _ = values
-        return ast.OneofBody()
+        return ast.OneofBody(span=Span.empty())
 
     @staticmethod
     def act_oneof_body(values: tuple[ast.OneofField, ast.OneofBody]) -> ast.OneofBody:
@@ -664,7 +664,7 @@ class GrammarBuilder:
     @staticmethod
     def act_reserved_ranges_eps(values: Epsilon) -> ast.RangeCollector:
         _ = values
-        return ast.RangeCollector()
+        return ast.RangeCollector(span=Span.empty())
 
     @staticmethod
     def act_reserved_ranges_tail(values: tuple[COMMA, ast.ReservedRange, ast.RangeCollector]) -> ast.RangeCollector:
@@ -683,7 +683,7 @@ class GrammarBuilder:
     @staticmethod
     def act_reserved_names_eps(values: Epsilon) -> ast.NameCollector:
         _ = values
-        return ast.NameCollector()
+        return ast.NameCollector(span=Span.empty())
 
     @staticmethod
     def act_reserved_names_tail(values: tuple[COMMA, STRING, ast.NameCollector]) -> ast.NameCollector:
@@ -751,7 +751,7 @@ class GrammarBuilder:
     @staticmethod
     def act_enum_body_eps(values: Epsilon) -> ast.EnumBody:
         _ = values
-        return ast.EnumBody()
+        return ast.EnumBody(span=Span.empty())
 
     @staticmethod
     def act_enum_body(values: tuple[ast.EnumElem, ast.EnumBody]) -> ast.EnumBody:
@@ -783,7 +783,7 @@ class GrammarBuilder:
     @staticmethod
     def act_message_body_eps(values: Epsilon) -> ast.MessageBody:
         _ = values
-        return ast.MessageBody()
+        return ast.MessageBody(span=Span.empty())
 
     @staticmethod
     def act_message_body(values: tuple[ast.MessageElem, ast.MessageBody]) -> ast.MessageBody:
@@ -805,7 +805,7 @@ class GrammarBuilder:
     @staticmethod
     def act_is_stream_eps(values: Epsilon) -> ast.StreamOption:
         _ = values
-        return ast.StreamOption()
+        return ast.StreamOption(span=Span.empty())
 
     @staticmethod
     def act_is_stream(values: tuple[STREAM]) -> ast.StreamOption:
@@ -827,7 +827,7 @@ class GrammarBuilder:
     @staticmethod
     def act_rpc_body_eps(values: Epsilon) -> ast.RpcBody:
         _ = values
-        return ast.RpcBody()
+        return ast.RpcBody(span=Span.empty())
 
     @staticmethod
     def act_rpc_body(values: tuple[ast.RpcBodyElem, ast.RpcBody]) -> ast.RpcBody:
@@ -884,7 +884,7 @@ class GrammarBuilder:
     @staticmethod
     def act_service_body_eps(values: Epsilon) -> ast.ServiceBody:
         _ = values
-        return ast.ServiceBody()
+        return ast.ServiceBody(span=Span.empty())
 
     @staticmethod
     def act_service_body(values: tuple[ast.ServiceElem, ast.ServiceBody]) -> ast.ServiceBody:
@@ -916,7 +916,7 @@ class GrammarBuilder:
     @staticmethod
     def act_file_eps(values: Epsilon) -> ast.ProtoFile:
         _ = values
-        return ast.ProtoFile()
+        return ast.ProtoFile(span=Span.empty())
 
     @staticmethod
     def act_file(values: tuple[ast.ProtoItem, ast.ProtoFile]) -> ast.ProtoFile:

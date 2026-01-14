@@ -4,9 +4,9 @@ from functools import cached_property
 from typing import TYPE_CHECKING
 
 from .symbol import NonTerminal
-from .spans import Span
 
 if TYPE_CHECKING:
+    from .spans import Span
     from .symbol import Terminal
 
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class Node:
     """Base class for all AST nodes."""
 
-    span: Span = Span()
+    span: Span
 
 
 @dataclass(frozen=True, slots=True)
