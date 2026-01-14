@@ -407,19 +407,16 @@ class GrammarBuilder:
     @staticmethod
     def act_const(
         values: tuple[INT | FLOAT | STRING | TRUE | FALSE | QualifiedName | Aggregate]
-    ) -> Const[ast.Constant]:
+    ) -> ast.Constant:
         value = values[0]
-
-        if isinstance(value, Token):
-            # Literal constant (int, float, string, bool)
-            return Const(value.to_constant())
 
         if isinstance(value, ast.QualifiedName):
             # Identifier constant
-            return Const(ast.Constant(
+            return ast.Constant(
                 span=value.span, kind=CONST_IDENT, value=value
-            ))
+            )
 
+        return ast.Constant(span: value.span, value=value)
         # Aggregate constant (already an ast.Constant)
         return Const(value)
 
@@ -427,8 +424,9 @@ class GrammarBuilder:
     # Semantic actions: Qualified names
     # -----------------------------------------------------------------------
 
-    def act_ident(values: tuple[IDENT | SYNTAX]) -> Ident[object]:
-        return Ident(values[0])
+    def act_ident(values: tuple[IDENT | SYNTAX]) -> ast.Ident:
+        value = values[0]
+        return ast.Ident(span=value.span, text=values[0].lexeme)
 
     def act_name_tail(values: tuple[DOT, Ident, NameTail] | Epsilon) -> NameTail[list]:
         if len(values) == 0:
@@ -462,26 +460,18 @@ class GrammarBuilder:
     # Semantic actions: Aggregates
     # -----------------------------------------------------------------------
 
-    def act_opt_comma(values: tuple[COMMA] | Epsilon) -> OptComma[bool]:
-        return OptComma(len(values) > 0)
+    # def act_opt_comma(values: tuple[COMMA] | Epsilon) -> OptComma[bool]:
+    #    return OptComma(len(values) > 0)
 
-    def act_aggregate_field(values: tuple[Ident, COLON, Const, OptComma]) -> AggField[tuple]:
-        tok: Token = values[0]
+    def act_aggregate_field(values: tuple[ast.Ident, COLON, ast.Constant]) -> ast.MessageField:
+        name: Token = values[0]
         const: ast.Constant = values[2]
-        return AggField((tok.lexeme, const))
+        return ast.MessageField(span=join_span(name, const), name=name, value=const)
 
-    def act_aggregate_tail(values: tuple[AggField, AggFieldsTail] | Epsilon) -> AggFieldsTail[list]:
-        if len(values) == 0:
-            return AggFieldsTail([])
-        return AggFieldsTail([values[0]] + values[1])
-
-    def act_aggregate_fields(values: tuple[AggField, AggFieldsTail]) -> AggFields[list]:
+    def act_aggregate_fields(values: tuple[ast.MessageField, COMMA, ast.MessageFields | Epsilon]) -> ast.MessageFields:
         return AggFields([values[0]] + values[1])
 
-    def act_agg_fields_opt(values: tuple[AggFields] | Epsilon) -> AggFieldsOpt[list]:
-        return AggFieldsOpt(values[0] if len(values) > 0 else [])
-
-    def act_aggregate(values: tuple[LBRACE, AggFieldsOpt, RBRACE]) -> Aggregate[ast.Constant]:
+    def act_aggregate(values: tuple[LBRACE, ast.MessageField | ast.MessageFields | Epsilon, RBRACE]) -> ast.MessageConstant:
         fields: list = values[1]
 
         return Aggregate(ast.Constant(
@@ -493,43 +483,39 @@ class GrammarBuilder:
     # Semantic actions: Options
     # -----------------------------------------------------------------------
 
-    def act_option_suffix(values: tuple[DOT, Ident, OptionSuffix] | Epsilon) -> OptionSuffix[list]:
+    def act_option_suffix(values: tuple[DOT, Ident, ast.OptionSuffix] | Epsilon) -> ast.OptionSuffix:
         if len(values) == 0:
-            return OptionSuffix([])
+            return ast.OptionSuffix()
 
         tok: Token = values[1]
-        return OptionSuffix([tok] + values[2])
+        option_suffix = values[2]
+        return ast.OptionSuffix(span=join_span(tok, suffix), suffix=[tok] + option_suffix.suffix)
 
-    def act_option_name_plain(values: tuple[QualifiedName]) -> OptionName[ast.OptionName]:
-        qn: ast.QualifiedName = values[0]
-        return OptionName(ast.OptionName(
-            span=qn.span, custom=False, base=qn, suffix=()
-        ))
+    def act_option_name_plain(values: tuple[ast.QualifiedName]) -> OptionName[ast.OptionName]:
+        return OptionName(ast.OptionName(span=qn.span, custom=False, base=values[0])
 
-    def act_option_name_custom(values: tuple[LPAREN, QualifiedName, RPAREN, OptionSuffix]) -> OptionName[ast.OptionName]:
-        qn: ast.QualifiedName = values[1]
-        suffix: list = values[3]
-        last = suffix[-1] if suffix else values[2]
-        return OptionName(ast.OptionName(
-            span=join_span(values[0], last),
+    def act_option_name_custom(values: tuple[LPAREN, ast.QualifiedName, RPAREN, ast.OptionSuffix]) -> ast.OptionName:
+        suffix = values[3]
+        return ast.OptionName(
+            span=join_span(values[0], suffix),
             custom=True,
-            base=qn,
-            suffix=tuple(tok.lexeme for tok in suffix),
-        ))
+            base=values[1],
+            suffix=suffix,
+        )
 
-    def act_option(values: tuple[OptionName, EQ, Const]) -> Option[ast.Option]:
+    def act_option(values: tuple[OptionName, EQ, Const]) -> ast.Option:
         name: ast.OptionName = values[0]
         const: ast.Constant = values[2]
-        return Option(ast.Option(
+        return ast.Option(
             span=join_span(name, const),
             name=name, value=const
-        ))
+        )
 
-    def act_option_statement(values: tuple[OPTION, Option, SEMI]) -> OptionStmt[ast.OptionStmt]:
+    def act_option_statement(values: tuple[OPTION, Option, SEMI]) -> ast.OptionStmt:
         opt: ast.Option = values[1]
-        return OptionStmt(ast.OptionStmt(
+        return ast.OptionStmt(
             span=join_span(values[0], values[2]), option=opt
-        ))
+        )
 
     # -----------------------------------------------------------------------
     # Semantic actions: Top-level statements
@@ -979,7 +965,7 @@ class GrammarBuilder:
             RPAREN,
             RpcBodyOpt,
         ]
-    ) -> Rpc[ast.Rpc]:
+    ) -> ast.Rpc:
         rpc_token: Token = values[0]
         name_token: Token = values[1]
         lparen1: Token = values[2]
@@ -992,7 +978,7 @@ class GrammarBuilder:
         rparen2: Token = values[10]
         body_opt: tuple = values[11]
 
-        return Rpc(ast.Rpc(
+        return ast.Rpc(
             span=join_span(
                 rpc_token,
                 body_opt[-1] if body_opt else rparen2
@@ -1007,7 +993,7 @@ class GrammarBuilder:
             request_stream=request_stream,
             response_stream=response_stream,
             options=tuple([x for x in body_opt if isinstance(x, ast.OptionStmt)]),
-        ))
+        )
 
     def act_service_elem(values: tuple[Rpc | OptionStmt | SEMI]) -> ServiceElem[ast.Rpc | ast.OptionStmt | None]:
         if isinstance(values[0], Token):  # SEMI token

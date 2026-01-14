@@ -74,7 +74,23 @@ class Package(Node):
 
 
 @dataclass(frozen=True, slots=True)
-class OptionName(Node):
+class OptionSuffix(Node, NonTerminal):
+    """Option suffix is a dot connected identifiers after the closing paren.
+
+    Examples:
+      - (my.custom).opt
+      - (my.custom).opt.sub
+
+    """
+
+    suffix: tuple[str, ...] = ()
+
+    def format(self) -> str:
+        return ("." + ".".join(self.suffix)) if self.suffix else ""
+
+
+@dataclass(frozen=True, slots=True)
+class OptionName(Node, NonTerminal):
     """Option name including custom options in parens.
 
     Examples:
@@ -89,7 +105,7 @@ class OptionName(Node):
     # after the closing paren.
     custom: bool
     base: QualifiedName
-    suffix: tuple[str, ...] = ()
+    suffix: OptionSuffix = OptionSuffix()
 
     def format(self) -> str:
         """Format option name, including custom options."""
@@ -97,13 +113,73 @@ class OptionName(Node):
             base = str(self.base)
             if self.base.absolute:
                 base = base[1:]
-            suffix = ("." + ".".join(self.suffix)) if self.suffix else ""
+
+            suffix = self.suffix.format()
             return f"({base}){suffix}"
+
         return str(self.base)
 
 
+
 @dataclass(frozen=True, slots=True)
-class Constant(Node):
+class Ident(Node, NonTerminal):
+    """Represents a literal identifier.
+
+    Examples:
+      - foo
+
+    """
+
+    text: str
+
+    def format(self) -> str:
+        return self.text
+
+
+@dataclass(frozen=True, slots=True)
+class MessageField(Node, NonTerminal):
+    """A key-value constant value.
+
+    Examples:
+      - { foo: 1, bar: "baz" }
+
+    """
+
+    name: Ident
+    value: Constant
+
+    def format(self) -> str:
+        return self.name.format() + ": "  + self.value.format()
+
+
+@dataclass(frozen=True, slots=True)
+class MessageFields(Node, NonTerminal):
+    """A list of key-value constant value.
+
+    Examples:
+      - [ foo: 1, bar: "baz" ]
+
+    """
+
+    fields: list[MessageField]
+
+    def format(self) -> str:
+        return ", ".join(f.format() for f in self.fields)
+
+
+@dataclass(frozen=True, slots=True)
+class MessageConstant(Node, NonTerminal):
+    """A message constant value.
+
+    Examples:
+      - { foo: 1, bar: "baz" }
+
+    """
+    
+
+
+@dataclass(frozen=True, slots=True)
+class Constant(Node, NonTerminal):
     """A constant value in proto3.
 
     Examples:
@@ -116,8 +192,8 @@ class Constant(Node):
 
     """
 
-    kind: type[Terminal]  # Terminal symbol representing the constant type
-    value: int | float | str | bool | QualifiedName
+    kind: type[Terminal]
+    value: Token | QualifiedName
 
     def format(self) -> str:
         """Format a constant value."""
@@ -150,7 +226,7 @@ class Constant(Node):
 
 
 @dataclass(frozen=True, slots=True)
-class Option(Node):
+class Option(Node, NonTerminal):
     """An option key-value pair.
 
     Examples:
@@ -169,7 +245,7 @@ class Option(Node):
 
 
 @dataclass(frozen=True, slots=True)
-class OptionStmt(Node):
+class OptionStmt(Node, NonTerminal):
     """Top-level or body-level option statement.
 
     Examples:
@@ -459,7 +535,7 @@ class Message(Node):
 
 
 @dataclass(frozen=True, slots=True)
-class Rpc(Node):
+class Rpc(Node, NonTerminal):
     """An RPC method definition in a service.
 
     Examples:

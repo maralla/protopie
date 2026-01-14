@@ -33,7 +33,7 @@ class Terminal(metaclass=_Meta):
 class NonTerminal(metaclass=_Meta):
     """Base class for non-terminal symbols in the grammar."""
 
-    name: str
+    symbol_name: str
 
     def __init__(self, value: object = None) -> None:
         self.value = value
@@ -41,7 +41,7 @@ class NonTerminal(metaclass=_Meta):
     def __init_subclass__(cls) -> None:
         """Automatically set name from class name if not provided."""
         if not hasattr(cls, 'name'):
-            cls.name = cls.__name__
+            cls.symbol_name = cls.__name__
 
     def __class_getitem__(cls, item: object) -> type:
         """Support generic syntax for type hints: QualifiedName[ast.QualifiedName]."""
