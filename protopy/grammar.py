@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import itertools
+import types as types_module
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union, get_type_hints, get_origin, get_args
 
@@ -23,7 +26,7 @@ class Token(ast.Node, Terminal):
 
 @dataclass
 class Production:
-    head: NonTerminal
+    head: type[NonTerminal]
     body: tuple[Symbol, ...]
     action: Callable[[tuple[Symbol, ...]], NonTerminal]
 
@@ -34,7 +37,7 @@ class Production:
 
 @dataclass
 class Grammar:
-    start: NonTerminal
+    start: type[NonTerminal]
     productions: tuple[Production, ...]
 
 
@@ -194,7 +197,7 @@ class GrammarExtractor:
     def _extract_from_values_type(
         self,
         values_type: object,
-        head: NonTerminal,
+        head: type[NonTerminal],
         func: Callable[[tuple[Symbol, ...]], NonTerminal],
     ) -> list[Production]:
         """Recursively extract productions from a values type annotation."""
@@ -234,7 +237,8 @@ class GrammarExtractor:
         types: list[list[Symbol]] = []
         for body_type in body_types:
             origin = get_origin(body_type)
-            if origin is Union:
+            # Handle both Union[A, B] and A | B syntax
+            if origin is Union or isinstance(body_type, types_module.UnionType):
                 # Union: extract symbols from all alternatives
                 types.append(list(get_args(body_type)))
             else:
@@ -262,13 +266,12 @@ class GrammarExtractor:
             return []
 
         # Extract head from return type
-        raw_return = func.__annotations__.get('return')
+        raw_return = hints['return']
         if not raw_return or not raw_return.is_nonterminal():
             return []
 
-        # Create a grammar symbol instance for the head
-        # This is a lightweight instance used only for grammar structure identification
-        head = raw_return.grammar_symbol()
+        # The symbol class itself is the head
+        head = raw_return
 
         # Extract body from values parameter
         values_type = hints['values']
@@ -936,5 +939,5 @@ class GrammarBuilder:
         extractor = GrammarExtractor()
         productions = extractor.extract_from_class(cls)
 
-        cls._cache = Grammar(start=ast.ProtoFile.grammar_symbol(), productions=tuple(productions))
+        cls._cache = Grammar(start=ast.ProtoFile, productions=tuple(productions))
         return cls._cache

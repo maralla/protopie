@@ -1,0 +1,4 @@
+# file: /home/maralla/Workspace/personal/protopy/protopy/lalr.py
+# hypothesis_version: 6.150.0
+
+["'", 'NonTerminal', 'accept', 'goto', 'reduce', 'shift', 'symbol_name', 'type[Terminal]']

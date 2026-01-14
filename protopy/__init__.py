@@ -35,6 +35,7 @@ def _get_parser() -> Parser:
 @dataclass(frozen=True, slots=True)
 class ParseResult:
     """Result of parsing multiple files with import resolution."""
+
     entrypoints: tuple[str, ...]
     files: dict[str, ProtoFile]  # absolute path -> AST
 
@@ -51,6 +52,7 @@ def parse_source(src: str, *, file: str = "<memory>") -> ProtoFile:
 
     Raises:
         ParseError: If the source is invalid
+
     """
     tokens = tokenize(src, file=file)
     result = _get_parser().parse(tokens)
@@ -91,6 +93,7 @@ def parse_file(path: str | Path) -> ProtoFile:
 
     Raises:
         ParseError: If the file is invalid
+
     """
     file_path = Path(path).expanduser().resolve()
     source = file_path.read_text(encoding="utf-8")
@@ -102,7 +105,7 @@ def _resolve_import(
     importer: Path,
     import_roots: list[Path]
 ) -> Path:
-    relative_path = Path(imp.path)
+    relative_path = Path(imp.path.text)
     candidates = [importer.parent / relative_path] + [root / relative_path for root in import_roots]
 
     for candidate in candidates:
@@ -111,7 +114,7 @@ def _resolve_import(
 
     raise ParseError(
         span=imp.span,
-        message=f"import not found: {imp.path!r}",
+        message=f"import not found: {imp.path.text!r}",
         hint="add the directory containing that file to import_paths",
     )
 
@@ -149,6 +152,7 @@ def parse_files(
 
     Raises:
         ParseError: If any file is invalid or imports cannot be resolved
+
     """
     import_roots = [Path(p).expanduser().resolve() for p in (import_paths or [])]
     files: dict[str, ProtoFile] = {}

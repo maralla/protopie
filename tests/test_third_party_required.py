@@ -149,27 +149,50 @@ def _simplify_ours(entry: Path) -> SimpleFile:
     pkg = str(ast.package.name) if ast.package else ""
 
     msgs: list[SimpleMessage] = []
-    for it in ast.items:
-        if type(it).__name__ != "Message":
+    for proto_item in ast.items:
+        if proto_item.item is None or type(proto_item.item).__name__ != "Message":
             continue
+        it = proto_item.item
         fields: list[SimpleField] = []
-        for e in it.body:
-            if type(e).__name__ != "Field":
+        for body_elem in it.body.elements:
+            if body_elem.element is None or type(body_elem.element).__name__ != "Field":
                 continue
-            if e.map_key_type is not None:
-                # Skip map fields in parity for now.
+            e = body_elem.element
+            # Check if it's a map field (MapType has attribute we can check for)
+            if type(e.field_type).__name__ == "MapType":
+                # Skip map fields in parity for now
                 continue
+
+            repeated = hasattr(e.label, 'repeated') and e.label.repeated
+
+            # Determine if it's a scalar type
+            scalar = None
+            type_name = None
+            if hasattr(e.field_type, 'name') and hasattr(e.field_type.name, 'parts'):
+                parts = e.field_type.name.parts
+                if len(parts) == 1:
+                    # Single identifier - might be a scalar
+                    name_text = parts[0].text
+                    if name_text in _SCALAR_TO_PROTOC_TYPE:
+                        scalar = name_text
+                    else:
+                        # It's a message or enum type
+                        type_name = name_text
+                else:
+                    # Qualified name - definitely a message or enum type
+                    type_name = ".".join(p.text for p in parts)
+
             fields.append(
                 SimpleField(
-                    name=e.name,
-                    number=e.number,
-                    repeated=bool(e.repeated),
-                    scalar=e.scalar_type,
-                    type_name=str(e.type_name) if e.type_name else None,
-                    typ=_SCALAR_TO_PROTOC_TYPE.get(e.scalar_type, 0) if e.scalar_type else 0,
+                    name=e.name.text,
+                    number=int(e.number.value),
+                    repeated=repeated,
+                    scalar=scalar,
+                    type_name=type_name,
+                    typ=_SCALAR_TO_PROTOC_TYPE.get(scalar, 0) if scalar else 0,
                 )
             )
-        msgs.append(SimpleMessage(name=it.name, fields=tuple(fields)))
+        msgs.append(SimpleMessage(name=it.name.text, fields=tuple(fields)))
 
     rel = entry.relative_to(FIXTURE_ROOT).as_posix()
     return SimpleFile(

@@ -105,7 +105,7 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
                     cur.advance()
                     end = cur.pos()
                     lex = "".join(buf)
-                    tokens.append(Token(STRING, lex, make_span(start, end)))
+                    tokens.append(Token(make_span(start, end), STRING, lex))
                     break
                 if c == "\n":
                     raise error_at(start, "unterminated string literal", hint="close the quote")
@@ -130,7 +130,7 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
             lex = m.group(0)
             cur.advance(len(lex))
             end = cur.pos()
-            tokens.append(Token(FLOAT, lex, make_span(start, end)))
+            tokens.append(Token(make_span(start, end), FLOAT, lex))
             continue
 
         m = _INT_RE.match(src, cur.i)
@@ -138,7 +138,7 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
             lex = m.group(0)
             cur.advance(len(lex))
             end = cur.pos()
-            tokens.append(Token(INT, lex, make_span(start, end)))
+            tokens.append(Token(make_span(start, end), INT, lex))
             continue
 
         # identifiers / keywords
@@ -148,7 +148,7 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
             cur.advance(len(lex))
             end = cur.pos()
             kind = KEYWORDS.get(lex, IDENT)
-            tokens.append(Token(kind, lex, make_span(start, end)))
+            tokens.append(Token(make_span(start, end), kind, lex))
             continue
 
         # punctuation
@@ -156,7 +156,7 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
         if k is not None:
             cur.advance()
             end = cur.pos()
-            tokens.append(Token(k, ch, make_span(start, end)))
+            tokens.append(Token(make_span(start, end), k, ch))
             continue
 
         raise error_at(
@@ -166,6 +166,6 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
         )
 
     eof_pos = cur.pos()
-    tokens.append(Token(EOF, "", Span(file=file, start=eof_pos, end=eof_pos)))
+    tokens.append(Token(Span(file=file, start=eof_pos, end=eof_pos), EOF, ""))
     return tokens
 

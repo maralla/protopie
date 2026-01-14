@@ -29,4 +29,4 @@ def test_symbol_init_subclass():
         pass
 
     assert MyTerminal.name == "MyTerminal"
-    assert MyNonTerminal.name == "MyNonTerminal"
+    assert MyNonTerminal.symbol_name == "MyNonTerminal"

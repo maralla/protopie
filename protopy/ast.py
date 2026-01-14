@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from functools import cached_property
 
@@ -219,6 +221,11 @@ class PrimitiveConstant(Node, NonTerminal):
     value: str
 
     def format(self) -> str:
+        # String literals need quotes added back (lexer strips them)
+        if self.kind.symbol_name == "STRING":
+            # Escape quotes and backslashes in the string
+            escaped = self.value.replace("\\", "\\\\").replace('"', '\\"')
+            return f'"{escaped}"'
         return self.value
 
 

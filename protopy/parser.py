@@ -7,10 +7,9 @@ from .grammar import (
     Grammar,
     Production,
     Token,
-    join_span,
 )
 from .lalr import ParseTable, TableBuilder
-from .symbol import NonTerminal, Terminal
+from .symbol import Terminal
 
 
 def _token_display(term: type[Terminal]) -> str:
@@ -27,7 +26,7 @@ class Parser:
     table: ParseTable
 
     @classmethod
-    def for_grammar(cls, grammar: Grammar) -> "Parser":
+    def for_grammar(cls, grammar: Grammar) -> Parser:
         return cls(grammar=grammar, table=TableBuilder(grammar).build())
 
     def parse(self, tokens: list[Token]) -> object:
@@ -41,12 +40,14 @@ class Parser:
             tok = tokens[i]
             act = self.table.table.get(state, {}).get(tok.kind)  # tok.kind is Terminal
             if act is None:
-                exp = sorted(self.table.terminals(state=state), key=lambda t: t.name)
+                exp = sorted(self.table.terminals(state=state), key=lambda t: t.symbol_name)
                 exp_s = ", ".join(_token_display(t) for t in exp[:12])
                 hint = None
                 if exp:
                     hint = f"expected one of: {exp_s}"
-                raise ParseError(span=tok.span, message=f"unexpected {tok.kind.name}", hint=hint)
+                # tok.kind is a type[Terminal], not an instance
+                kind_name = tok.kind.symbol_name if hasattr(tok.kind, 'symbol_name') else str(tok.kind)
+                raise ParseError(span=tok.span, message=f"unexpected {kind_name}", hint=hint)
 
             kind, arg = act
             if kind == "shift":
@@ -68,7 +69,8 @@ class Parser:
                 if k:
                     del values[-k:]
                     del states[-k:]
-                out = prod.action(rhs_vals)
+                # Type ignore: values contains runtime Symbol instances, mypy sees generic objects
+                out = prod.action(rhs_vals)  # type: ignore[arg-type]
                 values.append(out)
                 goto_action = self.table.table.get(states[-1], {}).get(prod.head)
                 if goto_action is None:

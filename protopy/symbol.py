@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import cast
 
 
@@ -24,14 +26,16 @@ class _Meta(type):
             raise TypeError(msg)
         return cast("type[Terminal]", cls)
 
-    def as_nonterminal(cls) -> NonTerminal:
+    def as_nonterminal(cls) -> type[NonTerminal]:
         """Return self as NonTerminal type, raising TypeError if not one.
 
         Uses cast() because after the runtime check, cls is guaranteed to be
         a NonTerminal type, but mypy cannot infer this from the is_nonterminal() check.
         """
-        msg = f"{cls} is not a NonTerminal"
-        raise TypeError(msg)
+        if not cls.is_nonterminal():
+            msg = f"{cls} is not a NonTerminal"
+            raise TypeError(msg)
+        return cast("type[NonTerminal]", cls)
 
 
 class Terminal(metaclass=_Meta):
@@ -57,52 +61,15 @@ class Terminal(metaclass=_Meta):
         super().__init_subclass__(**kwargs)
 
 
-class NonTerminal:
+class NonTerminal(metaclass=_Meta):
     """Base class for non-terminal symbols in the grammar."""
 
-    non_terminal_symbol_name: str | None = None
-
-    @classmethod
-    def grammar_symbol(cls) -> NonTerminal:
-        """Create a grammar symbol instance for this NonTerminal class.
-
-        Returns a lightweight instance used only for grammar structure,
-        not for actual parsing. Uses empty/default values for all fields.
-        """
-        instance = object.__new__(cls)
-        instance.non_terminal_symbol_name = cls.__name__
-        return instance
-
-    @property
-    def symbol_name(self) -> str:
-        return self.non_terminal_symbol_name or self.__class__.__name__
-
-    def is_terminal(self) -> bool:
-        return False
-
-    def is_nonterminal(self) -> bool:
-        return True
-
-    def as_nonterminal(self) -> NonTerminal:
-        return self
-
-    def as_terminal(self) -> type[Terminal]:
-        raise TypeError(f"{self.__class__} is not Terminal")
-
-    def __eq__(self, other: object) -> bool:
-        """Compare NonTerminals by symbol_name, not by field values.
-
-        This allows grammar_symbol() instances to match even though they
-        are different object instances.
-        """
-        if not isinstance(other, NonTerminal):
-            return NotImplemented
-        return self.symbol_name == other.symbol_name
-
-    def __hash__(self) -> int:
-        """Hash by symbol_name for use in sets and dicts."""
-        return hash(self.symbol_name)
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Automatically set symbol_name from class name."""
+        super().__init_subclass__(**kwargs)
+        cls.symbol_name = cls.__name__
+        # Note: Do not set cls.name here as it conflicts with dataclass fields
 
 
-# Type alias for symbols: Terminal types (classes) and NonTerminal instances
-Symbol = type[Terminal] | NonTerminal
+# Type alias for symbols: Terminal and NonTerminal types (classes)
+Symbol = type[Terminal] | type[NonTerminal]

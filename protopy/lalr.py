@@ -24,9 +24,6 @@ if TYPE_CHECKING:
 LR0Core = tuple[int, int]  # (production_index, dot_position)
 
 
-class _StartPrime(NonTerminal):
-    def __init__(self, name: str) -> None:
-        self.non_terminal_symbol_name = name
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,7 +91,7 @@ class TableBuilder:
         self.grammar = grammar
 
         # Collect symbols
-        self.nonterminals: set[NonTerminal] = {prod.head for prod in grammar.productions}
+        self.nonterminals: set[type[NonTerminal]] = {prod.head for prod in grammar.productions}
         self.terminals: set[type[Terminal]] = set()
         for prod in grammar.productions:
             for symbol in prod.body:
@@ -162,12 +159,12 @@ class TableBuilder:
         """Create augmented grammar with S' -> S production."""
         # Dynamically create a new nonterminal class for S'
         start_prime_name = self.grammar.start.symbol_name + "'"
-        start_prime = _StartPrime(start_prime_name)
+        start_prime = type(start_prime_name, (NonTerminal,), {'symbol_name': start_prime_name})
 
         augmented_production = Production(
             head=start_prime,
             body=(self.grammar.start,),
-            action=lambda values: values[0].as_nonterminal(),
+            action=lambda values: cast("NonTerminal", values[0]),
         )
         productions = (augmented_production, *self.grammar.productions)
 
@@ -176,7 +173,7 @@ class TableBuilder:
 
         return Grammar(start=start_prime, productions=productions)
 
-    def _productions_for_nonterminal(self, nonterminal: NonTerminal) -> tuple[int, ...]:
+    def _productions_for_nonterminal(self, nonterminal: type[NonTerminal]) -> tuple[int, ...]:
         """Return production indices for a given nonterminal."""
         return tuple(
             index for index, production in enumerate(self.augmented_grammar.productions)
