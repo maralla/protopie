@@ -287,15 +287,25 @@ class GrammarBuilder:
     # -----------------------------------------------------------------------
 
     @staticmethod
-    def act_ident(values: tuple[IDENT | SYNTAX]) -> ast.Ident:
+    def act_ident(
+        values: tuple[
+            IDENT
+            | SYNTAX
+            | MAP
+            | IMPORT
+            | WEAK
+            | PUBLIC
+            | PACKAGE
+            | TO
+            | MAX
+            | SERVICE
+            | RPC
+            | RETURNS
+        ]
+    ) -> ast.Ident:
         value = values[0]
         return ast.Ident(span=value.span, text=values[0].lexeme)
 
-    @staticmethod
-    def act_field_ident_map(values: tuple[MAP]) -> ast.Ident:
-        """Allow 'map' keyword as a field identifier."""
-        value = values[0]
-        return ast.Ident(span=value.span, text="map")
 
     @staticmethod
     def act_dotted_name_eps(values: Epsilon) -> ast.DottedName:

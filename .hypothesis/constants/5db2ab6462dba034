@@ -1,4 +1,0 @@
-# file: /home/maralla/Workspace/personal/protopy/protopy/testing/corpus.py
-# hypothesis_version: 6.150.0
-
-[0.02, 0.15, 0.2, 0.25, 0.6, 0.65, 0.85, '  }', '"', '";', '.', '.proto', ';', '_', '_-/', 'bool', 'bytes', 'enum', 'false', 'import', 'import ', 'import "', 'int32', 'int64', 'map', 'max', 'message', 'oneof', 'option', 'option ', 'package', 'package ', 'public', 'repeated', 'repeated ', 'reserved', 'returns', 'rpc', 'service', 'stream', 'stream ', 'string', 'syntax', 'syntax = "proto3";', 'to', 'true', 'uint32', 'uint64', 'weak', '}']

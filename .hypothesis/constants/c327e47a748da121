@@ -1,4 +1,0 @@
-# file: /Users/maralla/Workspace/projects/protopy/protopy/format.py
-# hypothesis_version: 6.150.0
-
-[' {', ' }', '"', ', ', '.', '/*missing-type*/', '/*unknown-const*/', ';', 'FLOAT', 'INT', 'STRING', '\\"', 'aggregate', 'false', 'ident', 'repeated ', 'reserved', 'stream ', 'true', '{ ', '}']

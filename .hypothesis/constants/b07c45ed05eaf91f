@@ -1,4 +1,0 @@
-# file: /home/maralla/Workspace/personal/protopy/src/protopy/tokens.py
-# hypothesis_version: 6.150.0
-
-['(', ')', ',', '.', '/', ':', ';', '<', '=', '>', 'EOF', 'FLOAT', 'IDENT', 'INT', 'STRING', '[', ']', 'enum', 'false', 'import', 'map', 'max', 'message', 'oneof', 'option', 'package', 'public', 'repeated', 'reserved', 'returns', 'rpc', 'service', 'stream', 'syntax', 'to', 'true', 'weak', '{', '}']

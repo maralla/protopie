@@ -1,4 +1,0 @@
-# file: /Users/maralla/Workspace/projects/protopy/protopy/grammar.py
-# hypothesis_version: 6.150.0
-
-['(', ')', ',', '.', '/', ':', ';', '<', '=', '>', 'EOF', 'FLOAT', 'IDENT', 'INT', 'STRING', 'SemVal', '[', ']', 'enum', 'false', 'import', 'map', 'max', 'message', 'oneof', 'option', 'package', 'public', 'repeated', 'reserved', 'returns', 'rpc', 'service', 'stream', 'syntax', 'to', 'true', 'weak', '{', '}', 'ε']

@@ -1,4 +1,0 @@
-# file: /home/maralla/Workspace/personal/protopy/src/protopy/production_dsl.py
-# hypothesis_version: 6.150.0
-
-['ProductionSink', 'Rhs', 'Sym | Rhs']
