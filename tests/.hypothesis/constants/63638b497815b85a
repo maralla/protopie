@@ -1,4 +1,0 @@
-# file: /Users/maralla/Workspace/projects/protopy/protopy/symbol.py
-# hypothesis_version: 6.150.0
-
-['name', 'type[NonTerminal]', 'type[Terminal]']
