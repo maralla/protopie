@@ -122,4 +122,5 @@ class NonTerminal(metaclass=_Meta):
 
 
 # Type alias for symbols: Terminal and NonTerminal types (classes)
-Symbol = type[Terminal] | type[NonTerminal]
+SymbolType = type[Terminal] | type[NonTerminal]
+Symbol = Terminal | NonTerminal

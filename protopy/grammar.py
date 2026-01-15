@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 from . import ast
-from .symbol import Terminal, NonTerminal, Symbol
+from .symbol import Terminal, NonTerminal, SymbolType, Symbol
 from .errors import ParseError
 from .spans import Span
 
@@ -26,7 +26,7 @@ class Token(ast.Node, Terminal):
 @dataclass
 class Production:
     head: type[NonTerminal]
-    body: tuple[Symbol, ...]
+    body: tuple[SymbolType, ...]
     action: Callable[[tuple[Symbol, ...]], NonTerminal]
 
     def __str__(self) -> str:
@@ -184,7 +184,7 @@ class GrammarExtractor:
         #   H: NT1 NT3 T2
         # Now converts to types = [[sym1], [sym1, sym2, sym3], [sym2]].
         # Then we get all productions by itertools.product(*types)
-        types: list[list[Symbol]] = []
+        types: list[list[SymbolType]] = []
         for body_type in body_types:
             if isinstance(body_type, UnionType):
                 # Handle A | B syntax

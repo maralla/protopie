@@ -1,93 +1,140 @@
+"""LALR parser for Protocol Buffers proto3 syntax."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from .errors import ParseError
-from .grammar import (
-    Grammar,
-    Production,
-    Token,
-)
 from .lalr import ParseTable, TableBuilder
-from .symbol import Terminal
+
+if TYPE_CHECKING:
+    from .grammar import Grammar, Production, Token
+    from .symbol import Terminal, Symbol, SymbolType
 
 
-def _token_display(term: type[Terminal]) -> str:
-    # Prefer printable punctuation and keywords as-is, fall back to name.
-    v = term.symbol_name
-    if len(v) == 1 and v in "{}[]()<>,.;=:":
-        return v
-    return v
+# Format terminal symbol for display in error messages
+def _token_display(terminal: type[Terminal]) -> str:
+    symbol_name = terminal.symbol_name
+    if len(symbol_name) == 1 and symbol_name in "{}[]()<>,.;=:":
+        return symbol_name
+    return symbol_name
+
+
+class GrammarError(Exception):
+    """Grammar is invalid."""
 
 
 @dataclass(slots=True)
 class Parser:
+    """LALR parser that processes tokens into an AST."""
+
     grammar: Grammar
-    table: ParseTable
+    parse_table: ParseTable
 
     @classmethod
     def for_grammar(cls, grammar: Grammar) -> Parser:
-        return cls(grammar=grammar, table=TableBuilder(grammar).build())
+        """Create a parser for the given grammar."""
+        return cls(grammar=grammar, parse_table=TableBuilder(grammar).build())
 
-    def parse(self, tokens: list[Token]) -> object:
-        # State stack + semantic value stack
+    # Get parse action for current state and token
+    def _get_action(self, state: int, symbol: SymbolType) -> tuple[str, int] | None:
+        return self.parse_table.table.get(state, {}).get(symbol)
+
+    # Create a parse error with helpful context
+    def _create_parse_error(self, state: int, token: Token) -> ParseError:
+        max_expected_tokens = 5
+
+        expected = sorted(self.parse_table.terminals(state=state), key=lambda t: t.symbol_name)
+        expected_str = ", ".join(_token_display(t) for t in expected[:max_expected_tokens])
+        hint = f"expected one of: {expected_str}" if expected else None
+        token_name = type(token).symbol_name
+
+        return ParseError.detail(span=token.span, message=f"unexpected {token_name}", hint=hint)
+
+    def _assert_action(self, expected: str, action: str) -> None:
+        if expected != action:
+            raise GrammarError(f"expected {expected} action, got {action}")
+
+    # Handle accept action: return final parse result
+    def parse(self, tokens: list[Token]) -> Symbol:
+        """Parse a list of tokens into an AST.
+
+        Args:
+            tokens: List of tokens to parse (must end with EOF token)
+
+        Returns:
+            The root AST node
+
+        Raises:
+            ParseError: If the input contains syntax errors
+            RuntimeError: If there are internal parser errors
+
+        """
         states: list[int] = [0]
-        values: list[object] = []
-        i = 0
+        values: list[Symbol] = []
+        token_index = 0
 
         while True:
-            state = states[-1]
-            tok = tokens[i]
-            act = self.table.table.get(state, {}).get(type(tok))  # type(tok) is the Terminal class
-            if act is None:
-                exp = sorted(self.table.terminals(state=state), key=lambda t: t.symbol_name)
-                exp_s = ", ".join(_token_display(t) for t in exp[:12])
-                hint_text = None
-                if exp:
-                    hint_text = f"expected one of: {exp_s}"
-                # Get the symbol name from the token's class
-                kind_name = type(tok).symbol_name
-                msg = f"unexpected {kind_name}"
-                raise ParseError.detail(span=tok.span, message=msg, hint=hint_text)
+            current_state = states[-1]
+            current_token = tokens[token_index]
+            action = self._get_action(current_state, type(current_token))
 
-            kind, arg = act
-            if kind == "shift":
-                states.append(arg)
-                values.append(tok)
-                i += 1
+            if action is None:
+                raise self._create_parse_error(current_state, current_token)
+
+            action_kind, action_arg = action
+
+            if action_kind == "shift":
+                states.append(action_arg)
+                values.append(current_token)
+                token_index += 1
                 continue
 
-            if kind == "reduce":
-                prod: Production = self.grammar.productions[arg]
-                k = len(prod.body)
-                if k > len(values) or k > (len(states) - 1):
-                    lookahead_name = type(tok).symbol_name
-                    raise RuntimeError(
-                        "invalid reduce: stack underflow "
-                        f"(state={state}, prod={arg}='{prod}', k={k}, "
-                        f"values={len(values)}, states={len(states)}, lookahead={lookahead_name})"
+            if action_kind == "reduce":
+                production: Production = self.grammar.productions[action_arg]
+                head = production.head
+                body_length = len(production.body)
+
+                values_count = len(values)
+                states_count = len(states)
+
+                # Validate stack has enough elements
+                if body_length > values_count or body_length > (states_count - 1):
+                    lookahead_name = type(current_token).symbol_name
+                    msg = (
+                        f"invalid reduce: stack underflow (state={current_state}, "
+                        f"prod={action_arg}='{production}', k={body_length}, "
+                        f"values={values_count}, states={states_count}, lookahead={lookahead_name})"
                     )
-                rhs_vals = tuple(values[-k:]) if k else ()
-                if k:
-                    del values[-k:]
-                    del states[-k:]
-                # Type ignore: values contains runtime Symbol instances, mypy sees generic objects
-                out = prod.action(rhs_vals)  # type: ignore[arg-type]
-                values.append(out)
-                goto_action = self.table.table.get(states[-1], {}).get(prod.head)
+                    raise GrammarError(msg)
+
+                # Pop right-hand side values from stack
+                action_values = tuple(values[-body_length:]) if body_length else ()
+                if body_length:
+                    del values[-body_length:]
+                    del states[-body_length:]
+
+                # Execute production action and push result
+                result = production.action(action_values)
+                values.append(result)
+
+                # Perform goto transition
+                state = states[-1]
+                goto_action = self._get_action(state, head)
                 if goto_action is None:
-                    msg = f"no goto from state {states[-1]} on {prod.head.symbol_name}"
-                    raise RuntimeError(msg)
+                    raise GrammarError(f"no goto from state {state} on {head.symbol_name}")
+
                 goto_kind, goto_state = goto_action
-                if goto_kind != "goto":
-                    raise RuntimeError(f"expected goto action, got {goto_kind}")
+                self._assert_action("goto", goto_kind)
+
                 states.append(goto_state)
                 continue
 
-            if kind == "accept":
+            if action_kind == "accept":
                 if not values:
-                    raise RuntimeError("accept with empty value stack")
+                    raise GrammarError("accept with empty value stack")
+
                 return values[-1]
 
-            raise RuntimeError(f"unknown action: {act}")
-
+            raise GrammarError(f"unknown action: {action}")

@@ -116,6 +116,77 @@ def validate(self):
         raise ParseError(...)
 ```
 
+## Documentation Policy
+
+### Never Add Docstrings to Internal Methods
+
+**Never** add docstrings to internal methods or functions (those starting with `_`).
+
+For internal items:
+1. **Use inline comments** - Place comments above the definition line if explanation is needed
+2. **Keep it concise** - Brief comments are better than verbose docstrings
+3. **No docstrings below definition** - Comments must go above, not as docstrings below
+
+For public API:
+1. **Use proper docstrings** - Public classes, methods, and functions should have docstrings
+2. **Include Args/Returns/Raises** - Document the interface clearly
+3. **Place below definition** - Follow standard Python docstring conventions
+
+### Examples
+
+**Bad:**
+```python
+def _scan_integer(self, cursor: _SourceCursor) -> str | None:
+    """
+    Scan an integer from the current position.
+
+    Args:
+        cursor: The source cursor to scan from
+
+    Returns:
+        The integer string or None
+    """
+    ...
+```
+
+**Good:**
+```python
+# Scan an integer from the current position
+def _scan_integer(self, cursor: _SourceCursor) -> str | None:
+    ...
+```
+
+**Bad:**
+```python
+class _InternalHelper:
+    """Helper class for internal processing."""
+    pass
+```
+
+**Good:**
+```python
+# Helper class for internal processing
+class _InternalHelper:
+    pass
+```
+
+**Good (public API):**
+```python
+def parse(self, tokens: list[Token]) -> object:
+    """Parse a sequence of tokens into an AST.
+
+    Args:
+        tokens: The list of tokens to parse
+
+    Returns:
+        The parsed AST object
+
+    Raises:
+        ParseError: If the tokens cannot be parsed
+    """
+    ...
+```
+
 ## General Principles
 
 1. **Fix, don't suppress** - Always prefer fixing issues over suppressing warnings

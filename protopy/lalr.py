@@ -13,7 +13,7 @@ from .grammar import (
 )
 from .symbol import (
     NonTerminal,
-    Symbol,
+    SymbolType,
     Terminal,
 )
 
@@ -47,7 +47,7 @@ class LR1Item:
 StateCore = frozenset[LR0Core]  # Frozen set of LR(0) cores
 State = set[LR1Item]  # A single LR(1) state
 StateList = list[State]  # List of states
-StateTransitions = dict[tuple[int, Symbol], int]  # (state_index, symbol) -> next_state_index
+StateTransitions = dict[tuple[int, SymbolType], int]  # (state_index, symbol) -> next_state_index
 LookaheadMap = dict[LR0Core, set[type[Terminal]]]  # Core -> set of lookahead terminals
 
 
@@ -68,7 +68,7 @@ class ParseTable:
     - Nonterminals: ("goto", next_state)
     """
 
-    table: Mapping[int, Mapping[Symbol, tuple[str, int]]]
+    table: Mapping[int, Mapping[SymbolType, tuple[str, int]]]
 
     def terminals(self, *, state: int) -> set[type[Terminal]]:
         """Get the set of terminals expected in a given parser state."""
@@ -99,7 +99,7 @@ class TableBuilder:
                     self.terminals.add(symbol.as_terminal())
 
         # FIRST sets
-        self.first_sets: dict[Symbol | Epsilon, set[type[Terminal] | Epsilon]] = {}
+        self.first_sets: dict[SymbolType | Epsilon, set[type[Terminal] | Epsilon]] = {}
         self._initialize_first_sets()
         self._compute_first_sets()
 
@@ -129,7 +129,7 @@ class TableBuilder:
                 if len(self.first_sets[production.head]) != before_size:
                     changed = True
 
-    def _first_of_sequence(self, sequence: tuple[Symbol, ...]) -> set[type[Terminal] | Epsilon]:
+    def _first_of_sequence(self, sequence: tuple[SymbolType, ...]) -> set[type[Terminal] | Epsilon]:
         """Compute FIRST set of a sequence of symbols.
 
         P -> Z β
@@ -212,9 +212,9 @@ class TableBuilder:
 
         return result
 
-    def _group_items_by_symbol(self, state: State) -> dict[Symbol, list[LR1Item]]:
+    def _group_items_by_symbol(self, state: State) -> dict[SymbolType, list[LR1Item]]:
         """Group items by the symbol after their dot position."""
-        groups: dict[Symbol, list[LR1Item]] = {}
+        groups: dict[SymbolType, list[LR1Item]] = {}
 
         for item in state:
             production = self.augmented_grammar.productions[item.production_index]
@@ -297,7 +297,7 @@ class TableBuilder:
 
     def _build_state_actions(
         self,
-        actions: dict[Symbol, tuple[str, int]],
+        actions: dict[SymbolType, tuple[str, int]],
         state: State,
         state_index: int,
         transitions: StateTransitions
@@ -349,7 +349,7 @@ class TableBuilder:
         lalr_states, lalr_transitions = self._merge_lr1_to_lalr(lr1_states, lr1_transitions)
 
         # Build unified parse table
-        table: defaultdict[int, dict[Symbol, tuple[str, int]]] = defaultdict(dict)
+        table: defaultdict[int, dict[SymbolType, tuple[str, int]]] = defaultdict(dict)
 
         # Add ACTION entries (terminals)
         for state_index, state in enumerate(lalr_states):
