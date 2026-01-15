@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import itertools
-import types as types_module
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union, get_type_hints, get_origin, get_args
+from types import UnionType
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -222,9 +222,9 @@ class GrammarExtractor:
 
         body_types = get_args(values_type)
 
-        # Empty tuple means epsilon
+        # Empty tuple not supported
         if not body_types:
-            return [Production(head=head, body=(), action=func)]
+            return []
 
         # Convert body_types to list of alternatives
         # tuple[NT, T | NT | NT, T]
@@ -236,10 +236,8 @@ class GrammarExtractor:
         # Then we get all productions by itertools.product(*types)
         types: list[list[Symbol]] = []
         for body_type in body_types:
-            origin = get_origin(body_type)
-            # Handle both Union[A, B] and A | B syntax
-            if origin is Union or isinstance(body_type, types_module.UnionType):
-                # Union: extract symbols from all alternatives
+            if isinstance(body_type, UnionType):
+                # Handle A | B syntax
                 types.append(list(get_args(body_type)))
             else:
                 # Single type: extract symbol
@@ -834,13 +832,8 @@ class GrammarBuilder:
         elem = values[0]
         collected = values[1]
 
-        last = body if collected.options else elem
+        last = collected if collected.options else elem
         return ast.RpcOptionCollector(span=join_span(elem, last), options=(elem, *collected.options))
-
-    @staticmethod
-    def act_rpc_option_eps(values: Epsilon) -> ast.RpcOption:
-        _ = values
-        return ast.RpcOption(span=Span.empty())
 
     @staticmethod
     def act_rpc_option_empty(values: tuple[SEMI]) -> ast.RpcOption:

@@ -1,0 +1,4 @@
+# file: /home/maralla/Workspace/personal/protopy/protopy/grammar.py
+# hypothesis_version: 6.150.0
+
+['(', ')', ',', '.', '/', ':', ';', '<', '=', '>', 'EOF', 'FLOAT', 'IDENT', 'INT', 'STRING', '[', ']', 'act_', 'aggregate', 'bool', 'bytes', 'double', 'enum', 'false', 'fixed32', 'fixed64', 'float', 'ident', 'import', 'int32', 'int64', 'map', 'max', 'message', 'oneof', 'option', 'package', 'proto3', 'public', 'repeated', 'reserved', 'return', 'returns', 'rpc', 'service', 'sfixed32', 'sfixed64', 'sint32', 'sint64', 'stream', 'string', 'syntax', 'to', 'true', 'uint32', 'uint64', 'values', 'weak', '{', '}', 'ε']

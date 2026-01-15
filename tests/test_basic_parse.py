@@ -41,11 +41,18 @@ message A {
   enum E {
     option allow_alias = true;
     ZERO = 0;
+    NONE = 0;
   }
 }
 
 service S {
   rpc Get (A) returns (A);
+  rpc Get1 (A) returns (A);
+  rpc Get2 (A) returns (A) {}
+  rpc Get3 (A) returns (A) {
+    option features.abcd = "hi";
+    option features.efg = "foo";
+  }
 }
 """
     ast1 = parse_source(src, file="x.proto")
