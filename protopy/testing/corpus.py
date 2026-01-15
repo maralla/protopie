@@ -32,7 +32,9 @@ _MAP_KEYS = ["int32", "int64", "uint32", "uint64", "bool", "string"]
 
 def _ident(r: random.Random, *, allow_keyword_syntax: bool = False) -> str:
     head = r.choice(string.ascii_letters + "_")
-    tail = "".join(r.choice(string.ascii_letters + string.digits + "_") for _ in range(r.randint(0, 10)))
+    tail = "".join(
+        r.choice(string.ascii_letters + string.digits + "_") for _ in range(r.randint(0, 10))
+    )
     s = head + tail
     if allow_keyword_syntax and r.random() < 0.02:
         return "syntax"
@@ -123,8 +125,11 @@ def _gen_enum(r: random.Random) -> str:
     name = _ident(r)
     lines = [f"enum {name} {{"]
     n = r.randint(1, 8)
-    value = 0
-    for _ in range(n):
+    # Proto3 requires the first enum value to be 0
+    vname = _ident(r)
+    lines.append(f"  {vname} = 0;")
+    value = 1
+    for _ in range(n - 1):
         vname = _ident(r)
         value += r.randint(0, 3)
         lines.append(f"  {vname} = {value};")
@@ -137,14 +142,18 @@ def _gen_message(r: random.Random) -> str:
     name = _ident(r)
     lines = [f"message {name} {{"]
 
+    # Track reserved field number ranges to avoid conflicts
+    reserved_end = 0
     if r.random() < 0.25:
         a = r.randint(1, 10)
         b = a + r.randint(0, 5)
         lines.append(f"  reserved {a} to {b};")
+        reserved_end = b
     if r.random() < 0.15:
         lines.append(f'  reserved "{_ident(r)}";')
 
-    field_no = 1
+    # Start field numbering after any reserved ranges
+    field_no = max(1, reserved_end + 1)
     for _ in range(r.randint(0, 10)):
         fname = _ident(r, allow_keyword_syntax=True)
         if r.random() < 0.15:

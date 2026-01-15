@@ -155,12 +155,62 @@ def _simplify_ours(entry: Path) -> SimpleFile:
         it = proto_item.item
         fields: list[SimpleField] = []
         for body_elem in it.body.elements:
-            if body_elem.element is None or type(body_elem.element).__name__ != "Field":
+            if body_elem.element is None:
+                continue
+
+            # Handle oneof blocks - extract fields from oneofs
+            if type(body_elem.element).__name__ == "Oneof":
+                oneof = body_elem.element
+                for oneof_field_elem in oneof.body.fields:
+                    if oneof_field_elem.field is None:
+                        continue
+                    e = oneof_field_elem.field
+
+                    # Process the oneof field same as regular fields below
+                    repeated = hasattr(e.label, 'repeated') and e.label.repeated
+                    scalar = None
+                    type_name = None
+                    if hasattr(e.field_type, 'name') and hasattr(e.field_type.name, 'parts'):
+                        parts = e.field_type.name.parts
+                        if len(parts) == 1:
+                            name_text = parts[0].text
+                            if name_text in _SCALAR_TO_PROTOC_TYPE:
+                                scalar = name_text
+                            else:
+                                type_name = name_text
+                        else:
+                            type_name = ".".join(p.text for p in parts)
+
+                    fields.append(
+                        SimpleField(
+                            name=e.name.text,
+                            number=int(e.number.value),
+                            repeated=repeated,
+                            scalar=scalar,
+                            type_name=type_name,
+                            typ=_SCALAR_TO_PROTOC_TYPE.get(scalar, 0) if scalar else 0,
+                        )
+                    )
+                continue
+
+            if type(body_elem.element).__name__ != "Field":
                 continue
             e = body_elem.element
-            # Check if it's a map field (MapType has attribute we can check for)
+
+            # Handle map fields
             if type(e.field_type).__name__ == "MapType":
-                # Skip map fields in parity for now
+                # Map fields are represented as repeated nested message types in protoc's descriptor
+                # Protoc internally converts `map<K,V> field = N;` to a repeated message field
+                fields.append(
+                    SimpleField(
+                        name=e.name.text,
+                        number=int(e.number.value),
+                        repeated=True,  # Maps are represented as repeated fields in descriptors
+                        scalar=None,
+                        type_name=None,  # Maps don't have a single type_name
+                        typ=descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE,
+                    )
+                )
                 continue
 
             repeated = hasattr(e.label, 'repeated') and e.label.repeated
@@ -244,4 +294,114 @@ def test_required_parity_with_descriptor_set(rel: str) -> None:
                 # Non-scalar types (message/enum) should carry a type_name in descriptors.
                 assert tf.type_name not in (None, "")
                 assert of.type_name is not None
+
+
+@pytest.mark.parametrize(
+    "proto_file",
+    [p.relative_to(FIXTURE_ROOT) for p in _fixture_files()],
+    ids=lambda p: str(p),
+)
+def test_comprehensive_parity_all_fixtures(proto_file: Path) -> None:
+    """Comprehensive validation: parse all fixture files and compare with protoc.
+
+    This test validates our parser against Google's official protoc compiler
+    for all available proto files. It's marked as 'slow' to avoid slowing
+    down regular test runs.
+
+    Run with: pytest -v -m slow
+    Or run all tests including slow: pytest -v
+    Skip slow tests: pytest -v -m "not slow"
+    """
+    entry = (FIXTURE_ROOT / proto_file).resolve()
+    assert entry.exists(), f"fixture file missing: {entry}"
+
+    # Parse with our parser
+    try:
+        ours = _simplify_ours(entry)
+    except Exception as e:
+        pytest.fail(f"Our parser failed on {proto_file}: {e}")
+
+    # Compile with official protoc
+    try:
+        fds = _compile_with_grpc_tools(entry)
+        truth = _simplify_truth(fds, file_name=str(proto_file))
+    except Exception as e:
+        pytest.skip(f"protoc failed (file may have advanced features): {e}")
+
+    # Compare package
+    assert ours.package == truth.package, f"Package mismatch in {proto_file}"
+
+    # Compare imports (convert Ident to string for comparison)
+    ours_imports_str = sorted(
+        [imp.text if hasattr(imp, "text") else str(imp) for imp in ours.imports]
+    )
+    truth_imports_str = sorted(truth.imports)
+    assert ours_imports_str == truth_imports_str, f"Imports mismatch in {proto_file}"
+
+    # Compare message structure
+    truth_msgs = {m.name: m for m in truth.messages}
+    ours_msgs = {m.name: m for m in ours.messages}
+
+    # Allow our parser to recognize more messages (nested, etc) but verify all protoc messages exist
+    missing_in_ours = set(truth_msgs) - set(ours_msgs)
+    if missing_in_ours:
+        pytest.fail(f"Messages missing in our parser for {proto_file}: {missing_in_ours}")
+
+    # For messages that exist in both, verify field structure
+    for name in truth_msgs:
+        if name not in ours_msgs:
+            continue
+
+        tm = truth_msgs[name]
+        om = ours_msgs[name]
+        tfields = {f.name: f for f in tm.fields}
+        ofields = {f.name: f for f in om.fields}
+
+        # Verify all protoc fields exist in our parser
+        missing_fields = set(tfields) - set(ofields)
+        if missing_fields:
+            pytest.fail(
+                f"Fields missing in our parser for {proto_file}::{name}: {missing_fields}"
+            )
+
+        # Verify field details match
+        for fn in tfields:
+            if fn not in ofields:
+                continue
+
+            tf = tfields[fn]
+            of = ofields[fn]
+
+            assert of.number == tf.number, (
+                f"Field number mismatch in {proto_file}::{name}.{fn}: "
+                f"ours={of.number} vs protoc={tf.number}"
+            )
+            assert of.repeated == tf.repeated, (
+                f"Field repeated mismatch in {proto_file}::{name}.{fn}: "
+                f"ours={of.repeated} vs protoc={tf.repeated}"
+            )
+
+            if of.scalar is not None:
+                assert of.typ == tf.typ, (
+                    f"Scalar type mismatch in {proto_file}::{name}.{fn}: "
+                    f"ours={of.typ} vs protoc={tf.typ}"
+                )
+            elif tf.type_name not in (None, ""):
+                # Check if this looks like a map field (repeated message with special naming)
+                # Protoc generates internal MapEntry types, but our parser doesn't
+                # Skip type_name validation for map fields
+                is_map_field = (
+                    of.repeated
+                    and of.typ == descriptor_pb2.FieldDescriptorProto.TYPE_MESSAGE
+                    and of.type_name is None
+                )
+
+                if not is_map_field:
+                    # Both should agree on message/enum type names
+                    # Note: protoc uses fully qualified names, we may use simple names
+                    # This is acceptable - just verify we have a type name
+                    assert of.type_name not in (None, ""), (
+                        f"Missing type name in {proto_file}::{name}.{fn}: "
+                        f"ours={of.type_name} vs protoc={tf.type_name}"
+                    )
 

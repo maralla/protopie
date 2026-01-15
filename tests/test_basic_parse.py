@@ -8,10 +8,12 @@ from protopy import ParseError, parse_files, parse_source
 
 
 def test_missing_syntax_is_error() -> None:
-    with pytest.raises(ParseError) as e:
+    with pytest.raises(ParseError) as exc_info:
         parse_source('package foo; message A {}', file="x.proto")
-    assert "missing syntax" in str(e.value)
-    assert "x.proto" in str(e.value)
+    error = exc_info.value
+    assert len(error.details) == 1
+    assert "missing syntax" in error.details[0].message
+    assert "x.proto" in str(error)
 
 
 def test_syntax_must_be_proto3() -> None:
@@ -30,13 +32,13 @@ import "dep.proto";
 option java_package = "x";
 
 message A {
-  reserved 1 to 3, 9;
+  reserved 2, 3, 9;
   reserved "old";
   int32 id = 1;
-  repeated string tags = 2 [deprecated = true];
+  repeated string tags = 4 [deprecated = true];
   oneof choice {
-    string a = 3;
-    bytes b = 4;
+    string a = 5;
+    bytes b = 6;
   }
   enum E {
     option allow_alias = true;

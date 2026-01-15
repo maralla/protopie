@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .ast import Import, ProtoFile
-from .errors import ParseError
+from .errors import ErrorDetail, ParseError
 from .grammar import GrammarBuilder
 from .lexer import tokenize
 from .parser import Parser
@@ -12,6 +12,7 @@ from .spans import Position, Span
 
 
 __all__ = [
+    "ErrorDetail",
     "ParseError",
     "ParseResult",
     "parse_file",
@@ -48,10 +49,22 @@ def parse_source(src: str, *, file: str = "<memory>") -> ProtoFile:
         file: Filename for error messages (default: "<memory>")
 
     Returns:
-        ProtoFile AST node
+        ProtoFile: The parsed AST
 
     Raises:
-        ParseError: If the source is invalid
+        ParseError: For syntax or validation errors (holds list of ErrorDetail)
+
+    Examples:
+        # Simple usage
+        proto_file = parse_source(src)
+
+        # Handle errors
+        try:
+            proto_file = parse_source(src)
+        except ParseError as e:
+            print(f"Found {len(e.details)} error(s):")
+            for detail in e.details:
+                print(f"  - {detail}")
 
     """
     tokens = tokenize(src, file=file)
@@ -65,20 +78,21 @@ def parse_source(src: str, *, file: str = "<memory>") -> ProtoFile:
         pos_zero = Position(offset=0, line=1, column=1)
         result = ProtoFile(
             span=Span(file=file, start=pos_zero, end=pos_zero),
-            syntax=result.syntax,
             items=result.items,
-            imports=result.imports,
-            package=result.package,
         )
 
     # Proto3 requires syntax declaration
     if result.syntax is None:
-        raise ParseError(
+        raise ParseError.detail(
             span=tokens[0].span,
             message="missing syntax declaration",
             hint='add: syntax = "proto3"; at the top of the file',
         )
 
+    # Validate and raise if errors found
+    errors = result.validate()
+    if errors:
+        raise ParseError(errors)
     return result
 
 
@@ -89,10 +103,10 @@ def parse_file(path: str | Path) -> ProtoFile:
         path: Path to the .proto file
 
     Returns:
-        ProtoFile AST node
+        ProtoFile: The parsed AST
 
     Raises:
-        ParseError: If the file is invalid
+        ParseError: For syntax or validation errors
 
     """
     file_path = Path(path).expanduser().resolve()
@@ -112,7 +126,7 @@ def _resolve_import(
         if candidate.exists() and candidate.is_file():
             return candidate.resolve()
 
-    raise ParseError(
+    raise ParseError.detail(
         span=imp.span,
         message=f"import not found: {imp.path.text!r}",
         hint="add the directory containing that file to import_paths",

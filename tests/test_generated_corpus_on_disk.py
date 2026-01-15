@@ -39,7 +39,7 @@ def test_generated_corpus_on_disk_parse_and_hash(tmp_path: Path) -> None:
 
     # Snapshot the corpus behavior by hash (update intentionally only).
     # If this changes unexpectedly, something changed in parsing/formatting semantics.
-    assert h.hexdigest() == "3f5cfee4af69b1a3fcabe5c86ec31d74d12b1f0f94ee1a22a5b137fbee79741f"
+    assert h.hexdigest() == "ee1b6cdea9fd6b4444980f4e5b3b263501b580435b2e27e874614bfdb7159422"
 
 
 def _write_tmp(root: Path, name: str, content: str) -> Path:

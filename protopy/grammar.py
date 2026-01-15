@@ -86,6 +86,7 @@ class PUBLIC(Token, name="public"): pass
 class PACKAGE(Token, name="package"): pass
 class OPTION(Token, name="option"): pass
 class REPEATED(Token, name="repeated"): pass
+class OPTIONAL(Token, name="optional"): pass
 class ONEOF(Token, name="oneof"): pass
 class MAP(Token, name="map"): pass
 class RESERVED(Token, name="reserved"): pass
@@ -93,6 +94,7 @@ class TO(Token, name="to"): pass
 class MAX(Token, name="max"): pass
 class ENUM(Token, name="enum"): pass
 class MESSAGE(Token, name="message"): pass
+class EXTEND(Token, name="extend"): pass
 class SERVICE(Token, name="service"): pass
 class RPC(Token, name="rpc"): pass
 class RETURNS(Token, name="returns"): pass
@@ -122,8 +124,8 @@ class EOF(Token, name="EOF"): pass
 # Keyword dictionary
 KEYWORDS = {
     s.name: s for s in {
-        SYNTAX, IMPORT, WEAK, PUBLIC, PACKAGE, OPTION, REPEATED, ONEOF,
-        MAP, RESERVED, TO, MAX, ENUM, MESSAGE, SERVICE, RPC, RETURNS,
+        SYNTAX, IMPORT, WEAK, PUBLIC, PACKAGE, OPTION, REPEATED, OPTIONAL, ONEOF,
+        MAP, RESERVED, TO, MAX, ENUM, MESSAGE, EXTEND, SERVICE, RPC, RETURNS,
         STREAM, TRUE, FALSE,
     }
 }
@@ -135,57 +137,6 @@ PUNCTUATION = {
         LBRACE, RBRACE, LBRACKET, RBRACKET, LANGLE, RANGLE,
     }
 }
-
-
-# Scalar type constants
-SCALAR_DOUBLE = "double"
-SCALAR_FLOAT = "float"
-SCALAR_INT32 = "int32"
-SCALAR_INT64 = "int64"
-SCALAR_UINT32 = "uint32"
-SCALAR_UINT64 = "uint64"
-SCALAR_SINT32 = "sint32"
-SCALAR_SINT64 = "sint64"
-SCALAR_FIXED32 = "fixed32"
-SCALAR_FIXED64 = "fixed64"
-SCALAR_SFIXED32 = "sfixed32"
-SCALAR_SFIXED64 = "sfixed64"
-SCALAR_BOOL = "bool"
-SCALAR_STRING = "string"
-SCALAR_BYTES = "bytes"
-
-SCALAR_TYPES = frozenset([
-    SCALAR_DOUBLE,
-    SCALAR_FLOAT,
-    SCALAR_INT32,
-    SCALAR_INT64,
-    SCALAR_UINT32,
-    SCALAR_UINT64,
-    SCALAR_SINT32,
-    SCALAR_SINT64,
-    SCALAR_FIXED32,
-    SCALAR_FIXED64,
-    SCALAR_SFIXED32,
-    SCALAR_SFIXED64,
-    SCALAR_BOOL,
-    SCALAR_STRING,
-    SCALAR_BYTES,
-])
-
-MAP_KEY_TYPES = frozenset([
-    SCALAR_INT32,
-    SCALAR_INT64,
-    SCALAR_UINT32,
-    SCALAR_UINT64,
-    SCALAR_SINT32,
-    SCALAR_SINT64,
-    SCALAR_FIXED32,
-    SCALAR_FIXED64,
-    SCALAR_SFIXED32,
-    SCALAR_SFIXED64,
-    SCALAR_BOOL,
-    SCALAR_STRING,
-])
 
 
 class GrammarExtractor:
@@ -341,6 +292,12 @@ class GrammarBuilder:
         return ast.Ident(span=value.span, text=values[0].lexeme)
 
     @staticmethod
+    def act_field_ident_map(values: tuple[MAP]) -> ast.Ident:
+        """Allow 'map' keyword as a field identifier."""
+        value = values[0]
+        return ast.Ident(span=value.span, text="map")
+
+    @staticmethod
     def act_dotted_name_eps(values: Epsilon) -> ast.DottedName:
         _ = values
         return ast.DottedName(span=Span.empty())
@@ -464,10 +421,10 @@ class GrammarBuilder:
     def act_syntax_statement(values: tuple[SYNTAX, EQ, STRING, SEMI]) -> ast.Syntax:
         literal = values[2].lexeme
         if literal != "proto3":
-            raise ParseError(
+            raise ParseError.detail(
                 span=values[2].span,
                 message="only proto3 syntax is supported",
-                hint='use: syntax = "proto3";'
+                hint='use: syntax = "proto3";',
             )
 
         return ast.Syntax(
@@ -548,11 +505,15 @@ class GrammarBuilder:
     @staticmethod
     def act_field_label_eps(values: Epsilon) -> ast.FieldLabel:
         _ = values
-        return ast.FieldLabel(span=Span.empty(), repeated=False)
+        return ast.FieldLabel(span=Span.empty(), none=True)
 
     @staticmethod
-    def act_field_label(values: tuple[REPEATED]) -> ast.FieldLabel:
+    def act_field_label_repeated(values: tuple[REPEATED]) -> ast.FieldLabel:
         return ast.FieldLabel(span=values[0].span, repeated=True)
+
+    @staticmethod
+    def act_field_label_optional(values: tuple[OPTIONAL]) -> ast.FieldLabel:
+        return ast.FieldLabel(span=values[0].span, optional=True)
 
     # -----------------------------------------------------------------------
     # Semantic actions: Message field
@@ -563,7 +524,7 @@ class GrammarBuilder:
         values: tuple[
             ast.FieldLabel,
             ast.QualifiedName | ast.MapType,
-            ast.Ident,
+            ast.Ident,  # This comes from act_field_ident, which allows keywords
             EQ,
             INT,
             ast.FieldOptions,
@@ -777,7 +738,7 @@ class GrammarBuilder:
 
     @staticmethod
     def act_message_elem(
-        values: tuple[ast.Field | ast.Oneof | ast.Enum | ast.Message | ast.OptionStmt | ast.Reserved]
+        values: tuple[ast.Field | ast.Oneof | ast.Enum | ast.Message | ast.Extend | ast.OptionStmt | ast.Reserved]
     ) -> ast.MessageElem:
         element = values[0]
         return ast.MessageElem(span=element.span, element=element)
@@ -799,6 +760,10 @@ class GrammarBuilder:
     @staticmethod
     def act_message(values: tuple[MESSAGE, ast.Ident, LBRACE, ast.MessageBody, RBRACE]) -> ast.Message:
         return ast.Message(span=join_span(values[0], values[4]), name=values[1], body=values[3])
+
+    @staticmethod
+    def act_extend(values: tuple[EXTEND, ast.QualifiedName, LBRACE, ast.MessageBody, RBRACE]) -> ast.Extend:
+        return ast.Extend(span=join_span(values[0], values[4]), name=values[1], body=values[3])
 
     # -----------------------------------------------------------------------
     # Semantic actions: RPC and Service
@@ -906,7 +871,7 @@ class GrammarBuilder:
 
     @staticmethod
     def act_item(
-        values: tuple[ast.Syntax | ast.Import | ast.Package | ast.OptionStmt | ast.Message | ast.Enum | ast.Service]
+        values: tuple[ast.Syntax | ast.Import | ast.Package | ast.OptionStmt | ast.Message | ast.Extend | ast.Enum | ast.Service]
     ) -> ast.ProtoItem:
         item = values[0]
         return ast.ProtoItem(span=item.span, item=item)

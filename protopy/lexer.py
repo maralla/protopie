@@ -62,7 +62,7 @@ def tokenize(src: str, *, file: str = "<memory>") -> list[Token]:
         end = cur.pos()
         if end.offset < start.offset:
             end = start
-        return ParseError(span=make_span(start, end), message=msg, hint=hint)
+        return ParseError.detail(span=make_span(start, end), message=msg, hint=hint)
 
     while not cur.eof():
         ch = cur.peek()

@@ -42,12 +42,12 @@ class Parser:
             if act is None:
                 exp = sorted(self.table.terminals(state=state), key=lambda t: t.symbol_name)
                 exp_s = ", ".join(_token_display(t) for t in exp[:12])
-                hint = None
+                hint_text = None
                 if exp:
-                    hint = f"expected one of: {exp_s}"
+                    hint_text = f"expected one of: {exp_s}"
                 # tok.kind is a type[Terminal], not an instance
                 kind_name = tok.kind.symbol_name if hasattr(tok.kind, 'symbol_name') else str(tok.kind)
-                raise ParseError(span=tok.span, message=f"unexpected {kind_name}", hint=hint)
+                raise ParseError.detail(span=tok.span, message=f"unexpected {kind_name}", hint=hint_text)
 
             kind, arg = act
             if kind == "shift":

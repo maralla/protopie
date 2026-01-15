@@ -9,7 +9,7 @@ from protopy.testing import generate_proto_sources
 
 
 # Update this by running: `uv run python scripts/compute_snapshot_hash.py`
-EXPECTED_SHA256 = "afa0a50e5e2becc713a316af14561d5fc99a32f1380a81246ac3ac55e7e40a08"
+EXPECTED_SHA256 = "dba287fee1e4348b9ceaf80ea49f23f0ead60e3dd2213ae1823f2e9d52f02933"
 
 
 def test_snapshot_corpus_hash() -> None:

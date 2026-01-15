@@ -5,11 +5,41 @@ from functools import cached_property
 
 from typing import TYPE_CHECKING
 
-from .symbol import NonTerminal
+from .errors import ErrorDetail
+from .symbol import MAP_KEY_TYPES, NonTerminal
 from .spans import Span
 
 if TYPE_CHECKING:
     from .symbol import Terminal
+
+# Protobuf field number constraints
+MAX_FIELD_NUMBER = 536870911  # 2^29 - 1, maximum field number in protobuf
+RESERVED_RANGE_START = 19000  # Start of implementation reserved range
+RESERVED_RANGE_END = 19999  # End of implementation reserved range
+
+
+@dataclass
+class ValidationState:
+    """State container for validation context.
+
+    Holds validation context to avoid passing multiple arguments
+    through validation methods. Does not hold errors - those are
+    returned by validation methods.
+
+    Attributes:
+        reserved_ranges: List of (start, end) tuples for reserved number ranges
+        reserved_names: Set of reserved field names
+        used_numbers: Map of field number to field name for duplicate detection
+
+    """
+
+    reserved_ranges: list[tuple[int, int]] = field(default_factory=list)
+    reserved_names: set[str] = field(default_factory=set)
+    used_numbers: dict[int, str] = field(default_factory=dict)
+
+    def is_number_reserved(self, num: int) -> bool:
+        """Check if a field number is reserved."""
+        return any(start <= num <= end for start, end in self.reserved_ranges)
 
 
 @dataclass(frozen=True, slots=True)
@@ -328,6 +358,11 @@ class MapKeyType(Node, NonTerminal):
 
     ident: Ident
 
+    @property
+    def name(self) -> str:
+        """Key type name as string."""
+        return self.ident.text
+
     def format(self) -> str:
         return self.ident.format()
 
@@ -351,20 +386,24 @@ class MapType(Node, NonTerminal):
 
 @dataclass(frozen=True, slots=True)
 class FieldLabel(Node, NonTerminal):
-    """Field label (repeated or nothing).
+    """Field label (repeated, optional, or nothing).
 
     Examples:
       - repeated
+      - optional
       - (nothing)
 
     """
 
     none: bool = False
     repeated: bool = False
+    optional: bool = False
 
     def format(self) -> str:
         if self.repeated:
             return "repeated "
+        if self.optional:
+            return "optional "
 
         return ""
 
@@ -397,36 +436,105 @@ class Field(Node, NonTerminal):
 
         return result
 
+    @cached_property
+    def field_num(self) -> int:
+        """Field number as integer."""
+        return int(self.number.value)
 
-@dataclass(frozen=True, slots=True)
-class TypeRef(Node, NonTerminal):
-    """A type reference for scalar or message types.
+    @cached_property
+    def field_name(self) -> str:
+        """Field name as string."""
+        return self.name.text
 
-    This represents individual types like int32 or MyMessage, but not
-    the map<K,V> composite syntax (which is represented in Field.map_key_type
-    and Field.map_value).
+    def validate(self, state: ValidationState) -> list[ErrorDetail]:
+        """Validate field constraints.
 
-    Examples:
-      - int32
-      - string
-      - MyMessage
-      - .google.protobuf.Timestamp
+        Args:
+            state: Validation state containing reserved info and used numbers
 
-    """
+        Returns:
+            List of validation errors (empty if valid)
 
-    type_name: QualifiedName | None = None
-    scalar_type: str | None = None
+        """
+        errors: list[ErrorDetail] = []
+        field_num = self.field_num
+        field_name = self.field_name
 
-    def format(self) -> str:
-        """Format a type reference."""
-        if self.scalar_type is not None:
-            return self.scalar_type
+        # Validate field number range
+        if field_num <= 0:
+            errors.append(ErrorDetail(
+                span=self.number.span,
+                message="Field numbers must be positive integers",
+            ))
 
-        if self.type_name is None:
-            return "/*missing-type*/"
+        if field_num > MAX_FIELD_NUMBER:
+            errors.append(ErrorDetail(
+                span=self.number.span,
+                message=f"Field numbers cannot be greater than {MAX_FIELD_NUMBER}",
+            ))
 
-        return str(self.type_name)
+        # Check reserved range (19000-19999)
+        if RESERVED_RANGE_START <= field_num <= RESERVED_RANGE_END:
+            errors.append(ErrorDetail(
+                span=self.number.span,
+                message=(
+                    "Field numbers 19000 through 19999 are reserved "
+                    "for the protocol buffer library implementation"
+                ),
+            ))
 
+        # Check if number is in reserved ranges
+        if state.is_number_reserved(field_num):
+            errors.append(ErrorDetail(
+                span=self.number.span,
+                message=f"Field number {field_num} is reserved",
+            ))
+
+        # Check for duplicate field numbers
+        if field_num in state.used_numbers:
+            prev_field = state.used_numbers[field_num]
+            errors.append(ErrorDetail(
+                span=self.number.span,
+                message=(
+                    f'Field number {field_num} has already been used by '
+                    f'field "{prev_field}"'
+                ),
+            ))
+
+        # Check if name is reserved
+        if field_name in state.reserved_names:
+            errors.append(ErrorDetail(
+                span=self.name.span,
+                message=f'Field name "{field_name}" is reserved',
+            ))
+
+        # Validate field type
+        if isinstance(self.field_type, MapType):
+            errors.extend(self._validate_map_type(self.field_type))
+
+        return errors
+
+    @staticmethod
+    def _validate_map_type(map_type: MapType) -> list[ErrorDetail]:
+        """Validate map field has valid key type.
+
+        Returns:
+            List of validation errors (empty if valid)
+
+        """
+        key_type = map_type.key_type
+        key_type_name = key_type.name
+
+        if key_type_name not in MAP_KEY_TYPES:
+            return [
+                ErrorDetail(
+                    span=key_type.ident.span,
+                    message=f'Map key type "{key_type_name}" is not allowed',
+                    hint="Keys must be integers, bools, or strings",
+                )
+            ]
+
+        return []
 
 @dataclass(frozen=True, slots=True)
 class OneofField(Node, NonTerminal):
@@ -444,6 +552,43 @@ class OneofField(Node, NonTerminal):
         if self.field is None:
             return ""
         return self.field.format()
+
+    def validate(self, state: ValidationState) -> list[ErrorDetail]:
+        """Validate oneof field.
+
+        Args:
+            state: Validation state with reserved info and used numbers
+
+        Returns:
+            List of validation errors (empty if valid)
+
+        """
+        errors: list[ErrorDetail] = []
+
+        if isinstance(self.field, Field):
+            field = self.field
+            field_num = field.field_num
+
+            # Basic validation for oneof fields
+            if field_num <= 0:
+                errors.append(ErrorDetail(
+                    span=field.number.span,
+                    message="Field numbers must be positive integers",
+                ))
+
+            if field_num in state.used_numbers:
+                prev_field = state.used_numbers[field_num]
+                errors.append(ErrorDetail(
+                    span=field.number.span,
+                    message=(
+                        f'Field number {field_num} has already been used '
+                        f'by field "{prev_field}"'
+                    ),
+                ))
+
+            state.used_numbers[field_num] = field.field_name
+
+        return errors
 
 
 @dataclass(frozen=True, slots=True)
@@ -486,6 +631,23 @@ class Oneof(Node, NonTerminal):
         output.append(_indent("}", indent))
         return output
 
+    def validate(self, state: ValidationState) -> list[ErrorDetail]:
+        """Validate all fields in the oneof.
+
+        Args:
+            state: Validation state with reserved info and used numbers
+
+        Returns:
+            List of validation errors (empty if valid)
+
+        """
+        errors: list[ErrorDetail] = []
+
+        for oneof_field in self.body.fields:
+            errors.extend(oneof_field.validate(state))
+
+        return errors
+
 
 @dataclass(frozen=True, slots=True)
 class ReservedRange(Node, NonTerminal):
@@ -505,6 +667,42 @@ class ReservedRange(Node, NonTerminal):
         if self.end is None:
             return self.start.format()
         return f"{self.start.format()} to {self.end.format()}"
+
+    def validate(self, state: ValidationState) -> list[ErrorDetail]:
+        """Validate this reserved range and add to state.
+
+        Args:
+            state: Validation state to populate
+
+        Returns:
+            List of validation errors (empty if valid)
+
+        """
+        errors: list[ErrorDetail] = []
+        start_num = int(self.start.value)
+
+        if self.end is None:
+            # Single number - store as range (start, start)
+            state.reserved_ranges.append((start_num, start_num))
+        else:
+            # Range
+            if isinstance(self.end, PrimitiveConstant):
+                end_num = int(self.end.value)
+            else:
+                # "max" keyword
+                end_num = MAX_FIELD_NUMBER
+
+            # Validate range is forward
+            if start_num > end_num:
+                errors.append(ErrorDetail(
+                    span=self.span,
+                    message=f"Reserved range is invalid: {start_num} to {end_num}",
+                    hint="Start must be less than or equal to end",
+                ))
+            else:
+                state.reserved_ranges.append((start_num, end_num))
+
+        return errors
 
 
 @dataclass(frozen=True, slots=True)
@@ -582,6 +780,33 @@ class Reserved(Node, NonTerminal):
     def format(self) -> str:
         return f"reserved {self.spec.format()}"
 
+    def validate(self, state: ValidationState) -> list[ErrorDetail]:
+        """Validate reserved statement and collect reserved info.
+
+        Args:
+            state: Validation state to populate with reserved info
+
+        Returns:
+            List of validation errors (empty if valid)
+
+        """
+        errors: list[ErrorDetail] = []
+        spec = self.spec
+
+        if spec.ranges and spec.ranges.ranges:
+            for range_item in spec.ranges.ranges:
+                if isinstance(range_item, ReservedRange):
+                    errors.extend(range_item.validate(state))
+                elif isinstance(range_item, Ident):
+                    # Reserved name in range list
+                    state.reserved_names.add(range_item.text)
+
+        if spec.names and spec.names.names:
+            for name in spec.names.names:
+                state.reserved_names.add(name.text)
+
+        return errors
+
 
 @dataclass(frozen=True, slots=True)
 class EnumValue(Node, NonTerminal):
@@ -597,6 +822,11 @@ class EnumValue(Node, NonTerminal):
     name: Ident
     number: PrimitiveConstant
     options: FieldOptions
+
+    @property
+    def value(self) -> int:
+        """Enum value as integer."""
+        return int(self.number.value)
 
     def format(self, indent: int = 0) -> str:
         value_str = f"{self.name.format()} = {self.number.format()}"
@@ -671,6 +901,46 @@ class Enum(Node, NonTerminal):
         output.append(_indent("}", indent))
         return output
 
+    def validate(self) -> list[ErrorDetail]:
+        """Validate enum definition.
+
+        Validates:
+        - Enum has at least one value
+        - Enum has a zero value (proto3 requirement)
+
+        Returns:
+            List of validation errors (empty if valid)
+
+        """
+        errors: list[ErrorDetail] = []
+
+        if not self.body.elements:
+            errors.append(ErrorDetail(
+                span=self.span,
+                message=f'Enum "{self.name.text}" must have at least one value',
+            ))
+
+        # Check if first value is 0 (proto3 requirement)
+        has_zero = False
+        for elem in self.body.elements:
+            if elem.element is None:
+                continue
+
+            if isinstance(elem.element, EnumValue):
+                value_num = elem.element.value
+                if value_num == 0:
+                    has_zero = True
+                    break
+
+        if not has_zero:
+            errors.append(ErrorDetail(
+                span=self.span,
+                message=f'Enum "{self.name.text}" must have a zero value in proto3',
+                hint="The first enum value must be zero",
+            ))
+
+        return errors
+
 
 @dataclass(frozen=True, slots=True)
 class MessageElem(Node, NonTerminal):
@@ -681,13 +951,14 @@ class MessageElem(Node, NonTerminal):
       - oneof
       - nested message
       - enum
+      - extend block
       - option statement
       - reserved statement
       - (empty line)
 
     """
 
-    element: Field | Oneof | Enum | Message | OptionStmt | Reserved | None = None
+    element: Field | Oneof | Enum | Message | Extend | OptionStmt | Reserved | None = None
 
     def format(self, indent: int = 0) -> list[str]:
         if self.element is None:
@@ -721,6 +992,27 @@ class MessageBody(Node, NonTerminal):
 
 
 @dataclass(frozen=True, slots=True)
+class Extend(Node, NonTerminal):
+    """An extend block (for proto extensions).
+
+    Examples:
+      - extend google.protobuf.FileOptions {
+          optional string my_option = 50000;
+        }
+
+    """
+
+    name: QualifiedName
+    body: MessageBody
+
+    def format(self, indent: int = 0) -> list[str]:
+        output = [_indent(f"extend {self.name.format()} {{", indent)]
+        output.extend(self.body.format(indent + 2))
+        output.append(_indent("}", indent))
+        return output
+
+
+@dataclass(frozen=True, slots=True)
 class Message(Node, NonTerminal):
     """A message definition.
 
@@ -741,6 +1033,88 @@ class Message(Node, NonTerminal):
         output.extend(self.body.format(indent + 2))
         output.append(_indent("}", indent))
         return output
+
+    def validate(self) -> list[ErrorDetail]:
+        """Validate message definition.
+
+        Validates:
+        - Reserved ranges are valid (start <= end)
+        - Field numbers are unique and not reserved
+        - Field names are not reserved
+        - Nested messages and enums
+
+        Returns:
+            List of validation errors (empty if valid)
+
+        """
+        errors: list[ErrorDetail] = []
+
+        # Create validation state for this message
+        state = ValidationState()
+
+        # First pass: collect reserved info
+        for elem in self.body.elements:
+            if elem.element is None:
+                continue
+
+            if isinstance(elem.element, Reserved):
+                errors.extend(elem.element.validate(state))
+
+        # Second pass: validate fields
+        errors.extend(self._validate_fields(state))
+
+        return errors
+
+    def _validate_fields(self, state: ValidationState) -> list[ErrorDetail]:
+        """Validate all fields in the message body.
+
+        Args:
+            state: Validation state with reserved info
+
+        Returns:
+            List of validation errors
+
+        """
+        errors: list[ErrorDetail] = []
+
+        for elem in self.body.elements:
+            if elem.element is None:
+                continue
+
+            if isinstance(elem.element, Field):
+                field_errors = elem.element.validate(state)
+                # Add message context to field errors
+                errors.extend(
+                    ErrorDetail(
+                        span=error.span,
+                        message=f'{error.message} in message "{self.name.text}"',
+                        hint=error.hint,
+                    )
+                    for error in field_errors
+                )
+                # Track this field number
+                state.used_numbers[elem.element.field_num] = elem.element.field_name
+
+            elif isinstance(elem.element, Oneof):
+                oneof_errors = elem.element.validate(state)
+                # Add message context to oneof errors
+                errors.extend(
+                    ErrorDetail(
+                        span=error.span,
+                        message=f'{error.message} in message "{self.name.text}"',
+                        hint=error.hint,
+                    )
+                    for error in oneof_errors
+                )
+
+            elif isinstance(elem.element, Message):
+                # Recursively validate nested messages
+                errors.extend(elem.element.validate())
+            elif isinstance(elem.element, Enum):
+                # Validate nested enums
+                errors.extend(elem.element.validate())
+
+        return errors
 
 
 @dataclass(frozen=True, slots=True)
@@ -820,7 +1194,7 @@ class Rpc(Node, NonTerminal):
     response: QualifiedName
     request_stream: StreamOption
     response_stream: StreamOption
-    options: RpcBody
+    options: RpcOption
 
     def format(self, indent: int = 0) -> list[str]:
         request_type = f"{self.request_stream.format()}{self.request.format()}"
@@ -900,7 +1274,6 @@ class Service(Node, NonTerminal):
         output.append(_indent("}", indent))
         return output
 
-
 @dataclass(frozen=True, slots=True)
 class ProtoItem(Node, NonTerminal):
     """A top-level item in a proto file.
@@ -911,13 +1284,14 @@ class ProtoItem(Node, NonTerminal):
       - package statement
       - option statement
       - message
+      - extend block
       - enum
       - service
       - (empty line)
 
     """
 
-    item: Syntax | Import | Package | OptionStmt | Message | Enum | Service | None = None
+    item: Syntax | Import | Package | OptionStmt | Message | Extend | Enum | Service | None = None
 
     def format(self, indent: int = 0) -> list[str]:
         if self.item is None:
@@ -1031,7 +1405,37 @@ class ProtoFile(Node, NonTerminal):
         while output and output[-1] == "":
             output.pop()
 
-        return "\n".join(output) + "\n" if output else ""
+        return "\n".join(output) + "\n"
+
+    def validate(self) -> list[ErrorDetail]:
+        """Validate semantic rules for proto3.
+
+        Performs validation similar to protoc, checking:
+        - Field number constraints
+        - Type validity
+        - Enum requirements
+        - Reserved range validity
+        - Duplicate detection
+
+        Returns:
+            List of validation errors (empty if valid)
+
+        """
+        errors: list[ErrorDetail] = []
+
+        # Validate all top-level items
+        for item in self.items:
+            if item.item is None:
+                continue
+
+            if isinstance(item.item, Message):
+                # Each message gets its own validation state
+                errors.extend(item.item.validate())
+            elif isinstance(item.item, Enum):
+                errors.extend(item.item.validate())
+
+        return errors
+
 
 
 def _indent(line: str, indent: int) -> str:

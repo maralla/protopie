@@ -1,0 +1,4 @@
+# file: /home/maralla/Workspace/personal/protopy/protopy/symbol.py
+# hypothesis_version: 6.150.0
+
+['bool', 'bytes', 'double', 'fixed32', 'fixed64', 'float', 'int32', 'int64', 'name', 'sfixed32', 'sfixed64', 'sint32', 'sint64', 'string', 'type[NonTerminal]', 'type[Terminal]', 'uint32', 'uint64']

@@ -3,6 +3,59 @@ from __future__ import annotations
 from typing import cast
 
 
+# Proto3 scalar type constants
+SCALAR_DOUBLE = "double"
+SCALAR_FLOAT = "float"
+SCALAR_INT32 = "int32"
+SCALAR_INT64 = "int64"
+SCALAR_UINT32 = "uint32"
+SCALAR_UINT64 = "uint64"
+SCALAR_SINT32 = "sint32"
+SCALAR_SINT64 = "sint64"
+SCALAR_FIXED32 = "fixed32"
+SCALAR_FIXED64 = "fixed64"
+SCALAR_SFIXED32 = "sfixed32"
+SCALAR_SFIXED64 = "sfixed64"
+SCALAR_BOOL = "bool"
+SCALAR_STRING = "string"
+SCALAR_BYTES = "bytes"
+
+# All valid scalar types in proto3
+SCALAR_TYPES = frozenset([
+    SCALAR_DOUBLE,
+    SCALAR_FLOAT,
+    SCALAR_INT32,
+    SCALAR_INT64,
+    SCALAR_UINT32,
+    SCALAR_UINT64,
+    SCALAR_SINT32,
+    SCALAR_SINT64,
+    SCALAR_FIXED32,
+    SCALAR_FIXED64,
+    SCALAR_SFIXED32,
+    SCALAR_SFIXED64,
+    SCALAR_BOOL,
+    SCALAR_STRING,
+    SCALAR_BYTES,
+])
+
+# Valid map key types in proto3 (subset of scalar types)
+MAP_KEY_TYPES = frozenset([
+    SCALAR_INT32,
+    SCALAR_INT64,
+    SCALAR_UINT32,
+    SCALAR_UINT64,
+    SCALAR_SINT32,
+    SCALAR_SINT64,
+    SCALAR_FIXED32,
+    SCALAR_FIXED64,
+    SCALAR_SFIXED32,
+    SCALAR_SFIXED64,
+    SCALAR_BOOL,
+    SCALAR_STRING,
+])
+
+
 class _Meta(type):
     symbol_name: str
 
@@ -50,7 +103,6 @@ class Terminal(metaclass=_Meta):
     name: str
 
     def __init_subclass__(cls, name: str | None = None, **kwargs: object) -> None:
-        """Automatically set name from class name if not provided."""
         if name is not None:
             cls.name = name
         elif not hasattr(cls, 'name'):
@@ -65,10 +117,8 @@ class NonTerminal(metaclass=_Meta):
     """Base class for non-terminal symbols in the grammar."""
 
     def __init_subclass__(cls, **kwargs: object) -> None:
-        """Automatically set symbol_name from class name."""
         super().__init_subclass__(**kwargs)
         cls.symbol_name = cls.__name__
-        # Note: Do not set cls.name here as it conflicts with dataclass fields
 
 
 # Type alias for symbols: Terminal and NonTerminal types (classes)
