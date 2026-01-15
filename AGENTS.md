@@ -45,8 +45,11 @@ result: ExpectedType = some_function()
 
 - Always run `uv run ruff check` and fix all errors
 - Use `uv run ruff check --fix` for auto-fixable issues
-- Do not use `# noqa` comments to suppress linter warnings without good reason
+- **Never add `# noqa` comments** to suppress linter warnings unless:
+  1. The user explicitly requests it, OR
+  2. You're modifying test files (where `# noqa` is acceptable for test-specific patterns)
 - If complexity warnings appear (C901, PLR0912), refactor the code to reduce complexity rather than suppressing the warning
+- For production code, always fix the underlying issue instead of suppressing warnings
 
 ### Type Checking
 

@@ -20,7 +20,6 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class Token(ast.Node, Terminal):
-    kind: type[Terminal] = Terminal
     lexeme: str = ""
 
 
@@ -275,7 +274,7 @@ class GrammarBuilder:
     @staticmethod
     def act_primitive_const(values: tuple[INT | FLOAT | STRING | TRUE | FALSE]) -> ast.PrimitiveConstant:
         value = values[0]
-        return ast.PrimitiveConstant(span=value.span, kind=value.kind, value=value.lexeme)
+        return ast.PrimitiveConstant(span=value.span, kind=type(value), value=value.lexeme)
 
     @staticmethod
     def act_const(values: tuple[ast.PrimitiveConstant | ast.QualifiedName | ast.MessageConstant]) -> ast.Constant:
