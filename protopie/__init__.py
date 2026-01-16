@@ -1,4 +1,4 @@
-"""Protopy: LALR(1) parser for Protocol Buffers (proto3)."""
+"""Protopie: LALR(1) parser for Protocol Buffers (proto3)."""
 
 from __future__ import annotations
 
