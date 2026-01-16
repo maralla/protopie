@@ -5,7 +5,7 @@ LALR(1) parser for protobuf.
 
 
 One interesting aspect about the implementation of the parser is that we utilize Python type
-annotation to define the grammar productions. And the whole project passes the strict mypy type checker.
+annotations to define the grammar productions. And the whole project passes the strict mypy type checker.
 
 
 **Disclaimer**: This project is heavily assisted by code agents.
@@ -23,7 +23,7 @@ uv add protopy
 Quickstart
 ----------
 
-### Parse source code directly
+#### Parse source code directly
 
 ```python
 from protopy import parse_source
@@ -40,7 +40,7 @@ message User {
 ast = parse_source(source)
 ```
 
-### Parse files with import resolution
+#### Parse files with import resolution
 
 ```python
 from protopy import parse_files
