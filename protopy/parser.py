@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from .errors import ParseError
 from .lalr import ParseTable, TableBuilder
+from .grammar import GrammarBuilder
 
 if TYPE_CHECKING:
     from .grammar import Grammar, Production, Token
@@ -25,17 +26,25 @@ class GrammarError(Exception):
     """Grammar is invalid."""
 
 
-@dataclass(slots=True)
+@dataclass
 class Parser:
     """LALR parser that processes tokens into an AST."""
 
     grammar: Grammar
     parse_table: ParseTable
 
+    _cache: Parser | None = None
+
     @classmethod
-    def for_grammar(cls, grammar: Grammar) -> Parser:
-        """Create a parser for the given grammar."""
-        return cls(grammar=grammar, parse_table=TableBuilder(grammar).build())
+    def instance(cls) -> Parser:
+        """Get the parser instance for grammar."""
+        if cls._cache is not None:
+            return cls._cache
+
+        grammar = GrammarBuilder.build()
+        parser = cls(grammar=grammar, parse_table=TableBuilder(grammar).build())
+        cls._cache = parser
+        return parser
 
     # Get parse action for current state and token
     def _get_action(self, state: int, symbol: SymbolType) -> tuple[str, int] | None:

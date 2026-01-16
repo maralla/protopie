@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# ruff: noqa: D103, S101, TC003
+
 from pathlib import Path
 
 import pytest

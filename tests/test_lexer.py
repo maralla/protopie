@@ -7,6 +7,9 @@ This module extensively tests all tokenization scenarios including:
 - Property-based testing with randomly generated data
 """
 
+# ruff: noqa: S101, ANN201, E501, PLR2004, ANN001, FURB116
+# mypy: disable-error-code="attr-defined,no-untyped-def"
+
 import pytest
 from hypothesis import given, strategies as st
 

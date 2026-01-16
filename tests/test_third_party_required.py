@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# ruff: noqa: S101, E501, PERF401, C901, PLR0912, PLR0915, PLC0206, D103
+# mypy: disable-error-code="import-untyped,union-attr,misc"
+
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path

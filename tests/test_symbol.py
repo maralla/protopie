@@ -1,8 +1,9 @@
+# ruff: noqa: D103, S101
+
 from protopy.symbol import Terminal, NonTerminal
 
 
-def test_symbol_classes():
-    """Test that symbol classes have correct name attributes."""
+def test_symbol_classes() -> None:
     class A(Terminal):
         name = "a"
 
@@ -20,8 +21,7 @@ def test_symbol_classes():
     assert A.name == C.name
 
 
-def test_symbol_init_subclass():
-    """Test that __init_subclass__ sets name from class name if not provided."""
+def test_symbol_init_subclass() -> None:
     class MyTerminal(Terminal):
         pass
 

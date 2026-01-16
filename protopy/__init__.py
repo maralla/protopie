@@ -1,3 +1,5 @@
+"""Protopy: LALR(1) parser for Protocol Buffers (proto3)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,7 +7,6 @@ from pathlib import Path
 
 from .ast import Import, ProtoFile
 from .errors import ErrorDetail, ParseError
-from .grammar import GrammarBuilder
 from .lexer import tokenize
 from .parser import Parser
 from .spans import Position, Span
@@ -19,18 +20,6 @@ __all__ = [
     "parse_files",
     "parse_source",
 ]
-
-
-# Global parser cache
-_PARSER: Parser | None = None
-
-
-def _get_parser() -> Parser:
-    """Get or create the cached parser instance."""
-    global _PARSER
-    if _PARSER is None:
-        _PARSER = Parser.for_grammar(GrammarBuilder.build())
-    return _PARSER
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,10 +57,10 @@ def parse_source(src: str, *, file: str = "<memory>") -> ProtoFile:
 
     """
     tokens = tokenize(src, file=file)
-    result = _get_parser().parse(tokens)
+    result = Parser.instance().parse(tokens)
 
     if not isinstance(result, ProtoFile):
-        raise RuntimeError(f"parser returned unexpected value: {type(result)!r}")
+        raise TypeError(f"parser returned unexpected value: {type(result)!r}")
 
     # Patch placeholder span if needed
     if result.span.file == "<unknown>":

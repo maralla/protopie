@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# ruff: noqa: D103, T201
+
 from protopy.grammar import GrammarBuilder
 
 
