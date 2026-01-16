@@ -13,8 +13,8 @@ This module extensively tests all tokenization scenarios including:
 import pytest
 from hypothesis import given, strategies as st
 
-from protopy.lexer import tokenize
-from protopy.errors import ParseError
+from protopie.lexer import tokenize
+from protopie.errors import ParseError
 
 
 class TestIntegerLiterals:

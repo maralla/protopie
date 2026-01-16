@@ -5,10 +5,9 @@ import random
 import string
 from pathlib import Path
 
-from protopy import parse_file, parse_files
+from protopie import parse_file, parse_files
 
 
-# Corpus generation (moved from protopy.testing.corpus)
 # ruff: noqa: PLR2004, S311, TC003, PERF401, D103, S101
 _KEYWORDS = {
     "import",

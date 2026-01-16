@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from protopy import ParseError, parse_files, parse_source
+from protopie import ParseError, parse_files, parse_source
 
 
 def test_missing_syntax_is_error() -> None:

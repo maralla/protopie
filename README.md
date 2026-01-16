@@ -1,5 +1,5 @@
-protopy
-=======
+protopie
+========
 
 LALR(1) parser for protobuf.
 
@@ -17,7 +17,7 @@ Installation
 ------------
 
 ```bash
-uv add protopy
+uv add protopie
 ```
 
 Quickstart
@@ -26,7 +26,7 @@ Quickstart
 #### Parse source code directly
 
 ```python
-from protopy import parse_source
+from protopie import parse_source
 
 source = '''
 syntax = "proto3";
@@ -43,7 +43,7 @@ ast = parse_source(source)
 #### Parse files with import resolution
 
 ```python
-from protopy import parse_files
+from protopie import parse_files
 
 result = parse_files(
     entrypoints=["/abs/path/to/root.proto"],

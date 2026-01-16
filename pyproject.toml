@@ -1,5 +1,5 @@
 [project]
-name = "protopy"
+name = "protopie"
 version = "0.1.0"
 description = "Protobuf proto3 syntax parser"
 readme = "README.md"
@@ -18,14 +18,14 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/maralla/protopy"
+Repository = "https://github.com/maralla/protopie"
 
 [build-system]
 requires = ["hatchling>=1.27.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["protopy"]
+packages = ["protopie"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

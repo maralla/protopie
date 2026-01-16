@@ -5,7 +5,7 @@ from typing import Any
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from protopy import parse_source
+from protopie import parse_source
 
 
 def _ident() -> st.SearchStrategy[str]:

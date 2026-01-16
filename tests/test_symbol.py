@@ -1,6 +1,6 @@
 # ruff: noqa: D103, S101
 
-from protopy.symbol import Terminal, NonTerminal
+from protopie.symbol import Terminal, NonTerminal
 
 
 def test_symbol_classes() -> None:

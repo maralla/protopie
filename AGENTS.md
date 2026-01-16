@@ -68,9 +68,9 @@ When you modify any Python file (`.py`):
 
 **Example workflow:**
 ```bash
-# After editing protopy/ast.py
-uv run ruff check protopy/ast.py
-uv run mypy protopy/ast.py
+# After editing protopie/ast.py
+uv run ruff check protopie/ast.py
+uv run mypy protopie/ast.py
 ```
 
 This ensures that every change maintains code quality standards and catches issues immediately.

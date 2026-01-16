@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from protopy import parse_source
-from protopy.errors import ParseError
+from protopie import parse_source
+from protopie.errors import ParseError
 
 
 def _compile_with_protoc(source: str, timeout: float = 2.0) -> tuple[bool | None, str]:

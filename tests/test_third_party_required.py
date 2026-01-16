@@ -11,7 +11,7 @@ import pytest
 from google.protobuf import descriptor_pb2
 from grpc_tools import protoc
 
-from protopy import parse_file
+from protopie import parse_file
 
 
 FIXTURE_ROOT = Path("tests/fixtures/third_party/protobuf").resolve()
