@@ -173,7 +173,6 @@ class OptionName(Node, NonTerminal):
         return str(self.base)
 
 
-
 @dataclass(frozen=True, slots=True)
 class Ident(Node, NonTerminal):
     """Represents a literal identifier.
@@ -202,7 +201,7 @@ class MessageField(Node, NonTerminal):
     value: Constant
 
     def format(self) -> str:
-        return self.name.format() + ": "  + self.value.format()
+        return self.name.format() + ": " + self.value.format()
 
 
 @dataclass(frozen=True, slots=True)
@@ -462,51 +461,62 @@ class Field(Node, NonTerminal):
 
         # Validate field number range
         if field_num <= 0:
-            errors.append(ErrorDetail(
-                span=self.number.span,
-                message="Field numbers must be positive integers",
-            ))
+            errors.append(
+                ErrorDetail(
+                    span=self.number.span,
+                    message="Field numbers must be positive integers",
+                )
+            )
 
         if field_num > MAX_FIELD_NUMBER:
-            errors.append(ErrorDetail(
-                span=self.number.span,
-                message=f"Field numbers cannot be greater than {MAX_FIELD_NUMBER}",
-            ))
+            errors.append(
+                ErrorDetail(
+                    span=self.number.span,
+                    message=f"Field numbers cannot be greater than {MAX_FIELD_NUMBER}",
+                )
+            )
 
         # Check reserved range (19000-19999)
         if RESERVED_RANGE_START <= field_num <= RESERVED_RANGE_END:
-            errors.append(ErrorDetail(
-                span=self.number.span,
-                message=(
-                    "Field numbers 19000 through 19999 are reserved "
-                    "for the protocol buffer library implementation"
-                ),
-            ))
+            errors.append(
+                ErrorDetail(
+                    span=self.number.span,
+                    message=(
+                        "Field numbers 19000 through 19999 are reserved "
+                        "for the protocol buffer library implementation"
+                    ),
+                )
+            )
 
         # Check if number is in reserved ranges
         if state.is_number_reserved(field_num):
-            errors.append(ErrorDetail(
-                span=self.number.span,
-                message=f"Field number {field_num} is reserved",
-            ))
+            errors.append(
+                ErrorDetail(
+                    span=self.number.span,
+                    message=f"Field number {field_num} is reserved",
+                )
+            )
 
         # Check for duplicate field numbers
         if field_num in state.used_numbers:
             prev_field = state.used_numbers[field_num]
-            errors.append(ErrorDetail(
-                span=self.number.span,
-                message=(
-                    f'Field number {field_num} has already been used by '
-                    f'field "{prev_field}"'
-                ),
-            ))
+            errors.append(
+                ErrorDetail(
+                    span=self.number.span,
+                    message=(
+                        f'Field number {field_num} has already been used by field "{prev_field}"'
+                    ),
+                )
+            )
 
         # Check if name is reserved
         if field_name in state.reserved_names:
-            errors.append(ErrorDetail(
-                span=self.name.span,
-                message=f'Field name "{field_name}" is reserved',
-            ))
+            errors.append(
+                ErrorDetail(
+                    span=self.name.span,
+                    message=f'Field name "{field_name}" is reserved',
+                )
+            )
 
         # Validate field type
         if isinstance(self.field_type, MapType):
@@ -535,6 +545,7 @@ class Field(Node, NonTerminal):
             ]
 
         return []
+
 
 @dataclass(frozen=True, slots=True)
 class OneofField(Node, NonTerminal):
@@ -571,20 +582,24 @@ class OneofField(Node, NonTerminal):
 
             # Basic validation for oneof fields
             if field_num <= 0:
-                errors.append(ErrorDetail(
-                    span=field.number.span,
-                    message="Field numbers must be positive integers",
-                ))
+                errors.append(
+                    ErrorDetail(
+                        span=field.number.span,
+                        message="Field numbers must be positive integers",
+                    )
+                )
 
             if field_num in state.used_numbers:
                 prev_field = state.used_numbers[field_num]
-                errors.append(ErrorDetail(
-                    span=field.number.span,
-                    message=(
-                        f'Field number {field_num} has already been used '
-                        f'by field "{prev_field}"'
-                    ),
-                ))
+                errors.append(
+                    ErrorDetail(
+                        span=field.number.span,
+                        message=(
+                            f"Field number {field_num} has already been used "
+                            f'by field "{prev_field}"'
+                        ),
+                    )
+                )
 
             state.used_numbers[field_num] = field.field_name
 
@@ -694,11 +709,13 @@ class ReservedRange(Node, NonTerminal):
 
             # Validate range is forward
             if start_num > end_num:
-                errors.append(ErrorDetail(
-                    span=self.span,
-                    message=f"Reserved range is invalid: {start_num} to {end_num}",
-                    hint="Start must be less than or equal to end",
-                ))
+                errors.append(
+                    ErrorDetail(
+                        span=self.span,
+                        message=f"Reserved range is invalid: {start_num} to {end_num}",
+                        hint="Start must be less than or equal to end",
+                    )
+                )
             else:
                 state.reserved_ranges.append((start_num, end_num))
 
@@ -915,10 +932,12 @@ class Enum(Node, NonTerminal):
         errors: list[ErrorDetail] = []
 
         if not self.body.elements:
-            errors.append(ErrorDetail(
-                span=self.span,
-                message=f'Enum "{self.name.text}" must have at least one value',
-            ))
+            errors.append(
+                ErrorDetail(
+                    span=self.span,
+                    message=f'Enum "{self.name.text}" must have at least one value',
+                )
+            )
 
         # Check if first value is 0 (proto3 requirement)
         has_zero = False
@@ -933,11 +952,13 @@ class Enum(Node, NonTerminal):
                     break
 
         if not has_zero:
-            errors.append(ErrorDetail(
-                span=self.span,
-                message=f'Enum "{self.name.text}" must have a zero value in proto3',
-                hint="The first enum value must be zero",
-            ))
+            errors.append(
+                ErrorDetail(
+                    span=self.span,
+                    message=f'Enum "{self.name.text}" must have a zero value in proto3',
+                    hint="The first enum value must be zero",
+                )
+            )
 
         return errors
 
@@ -1200,8 +1221,7 @@ class Rpc(Node, NonTerminal):
         request_type = f"{self.request_stream.format()}{self.request.format()}"
         response_type = f"{self.response_stream.format()}{self.response.format()}"
         header = _indent(
-            f"rpc {self.name.format()} ({request_type}) returns ({response_type})",
-            indent
+            f"rpc {self.name.format()} ({request_type}) returns ({response_type})", indent
         )
 
         body_lines = self.options.format(indent + 2)
@@ -1273,6 +1293,7 @@ class Service(Node, NonTerminal):
         output.extend(self.body.format(indent + 2))
         output.append(_indent("}", indent))
         return output
+
 
 @dataclass(frozen=True, slots=True)
 class ProtoItem(Node, NonTerminal):
@@ -1354,9 +1375,9 @@ class ProtoFile(Node, NonTerminal):
                 return item.item
         return None
 
-    def _group_items(self) -> tuple[
-        list[ProtoItem], list[ProtoItem], list[ProtoItem], list[ProtoItem]
-    ]:
+    def _group_items(
+        self,
+    ) -> tuple[list[ProtoItem], list[ProtoItem], list[ProtoItem], list[ProtoItem]]:
         """Group items by type: syntax, imports, package, and others."""
         syntax_items = []
         import_items = []
@@ -1387,9 +1408,7 @@ class ProtoFile(Node, NonTerminal):
         return output
 
     def format(self) -> str:
-        syntax_items, import_items, package_items, other_items = (
-            self._group_items()
-        )
+        syntax_items, import_items, package_items, other_items = self._group_items()
 
         output: list[str] = []
         output.extend(self._format_item_group(syntax_items))
@@ -1435,7 +1454,6 @@ class ProtoFile(Node, NonTerminal):
                 errors.extend(item.item.validate())
 
         return errors
-
 
 
 def _indent(line: str, indent: int) -> str:

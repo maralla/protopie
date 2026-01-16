@@ -103,11 +103,7 @@ def parse_file(path: str | Path) -> ProtoFile:
     return parse_source(source, file=str(file_path))
 
 
-def _resolve_import(
-    imp: Import,
-    importer: Path,
-    import_roots: list[Path]
-) -> Path:
+def _resolve_import(imp: Import, importer: Path, import_roots: list[Path]) -> Path:
     relative_path = Path(imp.path.text)
     candidates = [importer.parent / relative_path] + [root / relative_path for root in import_roots]
 
@@ -122,11 +118,7 @@ def _resolve_import(
     )
 
 
-def _load_file_recursive(
-    path: Path,
-    import_roots: list[Path],
-    files: dict[str, ProtoFile]
-) -> None:
+def _load_file_recursive(path: Path, import_roots: list[Path], files: dict[str, ProtoFile]) -> None:
     absolute_path = str(path.resolve())
     if absolute_path in files:
         return
@@ -164,7 +156,4 @@ def parse_files(
     for entry in entry_paths:
         _load_file_recursive(entry, import_roots, files)
 
-    return ParseResult(
-        entrypoints=tuple(str(p) for p in entry_paths),
-        files=files
-    )
+    return ParseResult(entrypoints=tuple(str(p) for p in entry_paths), files=files)

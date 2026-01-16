@@ -11,7 +11,7 @@ from protopy import ParseError, parse_files, parse_source
 
 def test_missing_syntax_is_error() -> None:
     with pytest.raises(ParseError) as exc_info:
-        parse_source('package foo; message A {}', file="x.proto")
+        parse_source("package foo; message A {}", file="x.proto")
     error = exc_info.value
     assert len(error.details) == 1
     assert "missing syntax" in error.details[0].message
@@ -82,4 +82,3 @@ def test_import_not_found_is_nice_error(tmp_path: Path) -> None:
     with pytest.raises(ParseError) as e:
         parse_files(entrypoints=[root], import_paths=[])
     assert "import not found" in str(e.value)
-

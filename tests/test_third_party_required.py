@@ -170,10 +170,10 @@ def _simplify_ours(entry: Path) -> SimpleFile:
                     e = oneof_field_elem.field
 
                     # Process the oneof field same as regular fields below
-                    repeated = hasattr(e.label, 'repeated') and e.label.repeated
+                    repeated = hasattr(e.label, "repeated") and e.label.repeated
                     scalar = None
                     type_name = None
-                    if hasattr(e.field_type, 'name') and hasattr(e.field_type.name, 'parts'):
+                    if hasattr(e.field_type, "name") and hasattr(e.field_type.name, "parts"):
                         parts = e.field_type.name.parts
                         if len(parts) == 1:
                             name_text = parts[0].text
@@ -216,12 +216,12 @@ def _simplify_ours(entry: Path) -> SimpleFile:
                 )
                 continue
 
-            repeated = hasattr(e.label, 'repeated') and e.label.repeated
+            repeated = hasattr(e.label, "repeated") and e.label.repeated
 
             # Determine if it's a scalar type
             scalar = None
             type_name = None
-            if hasattr(e.field_type, 'name') and hasattr(e.field_type.name, 'parts'):
+            if hasattr(e.field_type, "name") and hasattr(e.field_type.name, "parts"):
                 parts = e.field_type.name.parts
                 if len(parts) == 1:
                     # Single identifier - might be a scalar
@@ -363,9 +363,7 @@ def test_comprehensive_parity_all_fixtures(proto_file: Path) -> None:
         # Verify all protoc fields exist in our parser
         missing_fields = set(tfields) - set(ofields)
         if missing_fields:
-            pytest.fail(
-                f"Fields missing in our parser for {proto_file}::{name}: {missing_fields}"
-            )
+            pytest.fail(f"Fields missing in our parser for {proto_file}::{name}: {missing_fields}")
 
         # Verify field details match
         for fn in tfields:
@@ -407,4 +405,3 @@ def test_comprehensive_parity_all_fixtures(proto_file: Path) -> None:
                         f"Missing type name in {proto_file}::{name}.{fn}: "
                         f"ours={of.type_name} vs protoc={tf.type_name}"
                     )
-

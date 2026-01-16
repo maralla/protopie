@@ -21,39 +21,43 @@ SCALAR_STRING = "string"
 SCALAR_BYTES = "bytes"
 
 # All valid scalar types in proto3
-SCALAR_TYPES = frozenset([
-    SCALAR_DOUBLE,
-    SCALAR_FLOAT,
-    SCALAR_INT32,
-    SCALAR_INT64,
-    SCALAR_UINT32,
-    SCALAR_UINT64,
-    SCALAR_SINT32,
-    SCALAR_SINT64,
-    SCALAR_FIXED32,
-    SCALAR_FIXED64,
-    SCALAR_SFIXED32,
-    SCALAR_SFIXED64,
-    SCALAR_BOOL,
-    SCALAR_STRING,
-    SCALAR_BYTES,
-])
+SCALAR_TYPES = frozenset(
+    [
+        SCALAR_DOUBLE,
+        SCALAR_FLOAT,
+        SCALAR_INT32,
+        SCALAR_INT64,
+        SCALAR_UINT32,
+        SCALAR_UINT64,
+        SCALAR_SINT32,
+        SCALAR_SINT64,
+        SCALAR_FIXED32,
+        SCALAR_FIXED64,
+        SCALAR_SFIXED32,
+        SCALAR_SFIXED64,
+        SCALAR_BOOL,
+        SCALAR_STRING,
+        SCALAR_BYTES,
+    ]
+)
 
 # Valid map key types in proto3 (subset of scalar types)
-MAP_KEY_TYPES = frozenset([
-    SCALAR_INT32,
-    SCALAR_INT64,
-    SCALAR_UINT32,
-    SCALAR_UINT64,
-    SCALAR_SINT32,
-    SCALAR_SINT64,
-    SCALAR_FIXED32,
-    SCALAR_FIXED64,
-    SCALAR_SFIXED32,
-    SCALAR_SFIXED64,
-    SCALAR_BOOL,
-    SCALAR_STRING,
-])
+MAP_KEY_TYPES = frozenset(
+    [
+        SCALAR_INT32,
+        SCALAR_INT64,
+        SCALAR_UINT32,
+        SCALAR_UINT64,
+        SCALAR_SINT32,
+        SCALAR_SINT64,
+        SCALAR_FIXED32,
+        SCALAR_FIXED64,
+        SCALAR_SFIXED32,
+        SCALAR_SFIXED64,
+        SCALAR_BOOL,
+        SCALAR_STRING,
+    ]
+)
 
 
 class _Meta(type):
@@ -105,7 +109,7 @@ class Terminal(metaclass=_Meta):
     def __init_subclass__(cls, name: str | None = None, **kwargs: object) -> None:
         if name is not None:
             cls.name = name
-        elif not hasattr(cls, 'name'):
+        elif not hasattr(cls, "name"):
             cls.name = cls.__name__
 
         cls.symbol_name = cls.name

@@ -17,7 +17,8 @@ def _ident() -> st.SearchStrategy[str]:
     )
     # Exclude boolean literals and keywords that create LALR(1) conflicts
     return st.builds(lambda h, t: h + t, head, tail).filter(
-        lambda s: s not in {
+        lambda s: s
+        not in {
             # Boolean literals (never allowed as identifiers)
             "true",
             "false",
@@ -50,9 +51,21 @@ def proto_sources(draw: Any) -> str:  # noqa: C901, PLR0912, PLR0915, ANN401
 
     # All scalar types
     scalar_types = [
-        "int32", "int64", "uint32", "uint64", "sint32", "sint64",
-        "fixed32", "fixed64", "sfixed32", "sfixed64",
-        "float", "double", "bool", "string", "bytes"
+        "int32",
+        "int64",
+        "uint32",
+        "uint64",
+        "sint32",
+        "sint64",
+        "fixed32",
+        "fixed64",
+        "sfixed32",
+        "sfixed64",
+        "float",
+        "double",
+        "bool",
+        "string",
+        "bytes",
     ]
 
     parts = ['syntax = "proto3";', ""]
@@ -178,8 +191,7 @@ def proto_sources(draw: Any) -> str:  # noqa: C901, PLR0912, PLR0915, ANN401
                 )
                 field_names_used.add(oneof_fname)
                 oneof_fields.append(
-                    f"    {draw(st.sampled_from(scalar_types[:5]))} "
-                    f"{oneof_fname} = {field_no};"
+                    f"    {draw(st.sampled_from(scalar_types[:5]))} {oneof_fname} = {field_no};"
                 )
                 field_no += 1
             msg_body.append(f"  oneof {oneof_name} {{")
@@ -222,8 +234,7 @@ def proto_sources(draw: Any) -> str:  # noqa: C901, PLR0912, PLR0915, ANN401
             req_stream = "stream " if draw(st.booleans()) else ""
             resp_stream = "stream " if draw(st.booleans()) else ""
             rpc_line = (
-                f"  rpc {rpc_name} ({req_stream}{req_type}) "
-                f"returns ({resp_stream}{resp_type});"
+                f"  rpc {rpc_name} ({req_stream}{req_type}) returns ({resp_stream}{resp_type});"
             )
             parts.append(rpc_line)
         parts.append("}")
@@ -244,4 +255,3 @@ def test_fuzz_roundtrip_stable_format(src: str) -> None:
     ast2 = parse_source(out1, file="fuzz.proto")
     out2 = ast2.format()
     assert out2 == out1  # noqa: S101
-

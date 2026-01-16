@@ -7,7 +7,7 @@ This module extensively tests all tokenization scenarios including:
 - Property-based testing with randomly generated data
 """
 
-# ruff: noqa: S101, ANN201, E501, PLR2004, ANN001, FURB116
+# ruff: noqa: S101, ANN201, PLR2004, ANN001, FURB116
 # mypy: disable-error-code="attr-defined,no-untyped-def"
 
 import pytest
@@ -90,7 +90,9 @@ class TestIntegerLiterals:
             "01238",
         ]
         for src in invalid_cases:
-            with pytest.raises(ParseError, match="numbers starting with leading zero must be in octal"):
+            with pytest.raises(
+                ParseError, match="numbers starting with leading zero must be in octal"
+            ):
                 tokenize(src)
 
     def test_invalid_hex_literals(self):
@@ -212,7 +214,7 @@ class TestStringLiterals:
         cases = [
             (r'"hello\nworld"', [("STRING", r"hello\nworld")]),
             (r'"hello\tworld"', [("STRING", r"hello\tworld")]),
-            (r'"hello\"world"', [("STRING", r'hello\"world')]),
+            (r'"hello\"world"', [("STRING", r"hello\"world")]),
             (r'"hello\\world"', [("STRING", r"hello\\world")]),
             (r"'hello\'world'", [("STRING", r"hello\'world")]),
         ]
@@ -255,12 +257,28 @@ class TestIdentifiersAndKeywords:
     def test_keywords(self):
         """Test keyword tokenization."""
         keywords = [
-            "syntax", "import", "weak", "public", "package",
-            "option", "repeated", "optional",
-            "message", "enum", "service", "rpc", "returns",
-            "stream", "oneof", "map", "reserved", "to",
-            "extend", "max",
-            "true", "false",
+            "syntax",
+            "import",
+            "weak",
+            "public",
+            "package",
+            "option",
+            "repeated",
+            "optional",
+            "message",
+            "enum",
+            "service",
+            "rpc",
+            "returns",
+            "stream",
+            "oneof",
+            "map",
+            "reserved",
+            "to",
+            "extend",
+            "max",
+            "true",
+            "false",
         ]
         for keyword in keywords:
             tokens = tokenize(keyword)
@@ -274,8 +292,18 @@ class TestPunctuation:
     def test_single_char_punctuation(self):
         """Test single-character punctuation."""
         punctuation = [
-            ";", ",", ".", "=", "{", "}", "[", "]", "(", ")",
-            "<", ">",
+            ";",
+            ",",
+            ".",
+            "=",
+            "{",
+            "}",
+            "[",
+            "]",
+            "(",
+            ")",
+            "<",
+            ">",
         ]
         for punct in punctuation:
             tokens = tokenize(punct)
@@ -513,7 +541,15 @@ class TestPropertyBased:
             # Some float representations might be invalid, that's ok
             pass
 
-    @given(st.text(alphabet=st.characters(whitelist_categories=("Lu", "Ll"), min_codepoint=ord("a"), max_codepoint=ord("z")), min_size=1, max_size=20))
+    @given(
+        st.text(
+            alphabet=st.characters(
+                whitelist_categories=("Lu", "Ll"), min_codepoint=ord("a"), max_codepoint=ord("z")
+            ),
+            min_size=1,
+            max_size=20,
+        )
+    )
     def test_random_identifiers(self, s):
         """Test random identifier strings."""
         # Ensure it starts with a letter
@@ -526,11 +562,28 @@ class TestPropertyBased:
         assert len(result) == 1
         # Could be an identifier or a keyword
         known_keywords = {
-            "syntax", "import", "weak", "public", "package",
-            "option", "repeated", "optional",
-            "message", "enum", "service", "rpc", "returns",
-            "stream", "oneof", "map", "reserved", "to",
-            "extend", "max", "true", "false",
+            "syntax",
+            "import",
+            "weak",
+            "public",
+            "package",
+            "option",
+            "repeated",
+            "optional",
+            "message",
+            "enum",
+            "service",
+            "rpc",
+            "returns",
+            "stream",
+            "oneof",
+            "map",
+            "reserved",
+            "to",
+            "extend",
+            "max",
+            "true",
+            "false",
         }
         if src in known_keywords:
             assert type(result[0]).symbol_name == src

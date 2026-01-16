@@ -40,7 +40,6 @@ class Grammar:
     productions: tuple[Production, ...]
 
 
-
 class Epsilon:
     """Sentinel representing epsilon (empty production).
 
@@ -64,76 +63,235 @@ class Epsilon:
     def __iter__(self) -> Iterator[None]:
         return iter(())
 
+
 # Sentinel instance - use this everywhere
 EPSILON = Epsilon()
 
+
 # Constant kind markers (for ast.Constant.kind field)
-class CONST_IDENT(Token, name="ident"): pass
-class CONST_AGGREGATE(Token, name="aggregate"): pass
+class CONST_IDENT(Token, name="ident"):
+    pass
+
+
+class CONST_AGGREGATE(Token, name="aggregate"):
+    pass
+
 
 # Literal tokens
-class IDENT(Token, name="IDENT"): pass
-class INT(Token, name="INT"): pass
-class FLOAT(Token, name="FLOAT"): pass
-class STRING(Token, name="STRING"): pass
+class IDENT(Token, name="IDENT"):
+    pass
+
+
+class INT(Token, name="INT"):
+    pass
+
+
+class FLOAT(Token, name="FLOAT"):
+    pass
+
+
+class STRING(Token, name="STRING"):
+    pass
+
 
 # Keywords
-class SYNTAX(Token, name="syntax"): pass
-class IMPORT(Token, name="import"): pass
-class WEAK(Token, name="weak"): pass
-class PUBLIC(Token, name="public"): pass
-class PACKAGE(Token, name="package"): pass
-class OPTION(Token, name="option"): pass
-class REPEATED(Token, name="repeated"): pass
-class OPTIONAL(Token, name="optional"): pass
-class ONEOF(Token, name="oneof"): pass
-class MAP(Token, name="map"): pass
-class RESERVED(Token, name="reserved"): pass
-class TO(Token, name="to"): pass
-class MAX(Token, name="max"): pass
-class ENUM(Token, name="enum"): pass
-class MESSAGE(Token, name="message"): pass
-class EXTEND(Token, name="extend"): pass
-class SERVICE(Token, name="service"): pass
-class RPC(Token, name="rpc"): pass
-class RETURNS(Token, name="returns"): pass
-class STREAM(Token, name="stream"): pass
+class SYNTAX(Token, name="syntax"):
+    pass
+
+
+class IMPORT(Token, name="import"):
+    pass
+
+
+class WEAK(Token, name="weak"):
+    pass
+
+
+class PUBLIC(Token, name="public"):
+    pass
+
+
+class PACKAGE(Token, name="package"):
+    pass
+
+
+class OPTION(Token, name="option"):
+    pass
+
+
+class REPEATED(Token, name="repeated"):
+    pass
+
+
+class OPTIONAL(Token, name="optional"):
+    pass
+
+
+class ONEOF(Token, name="oneof"):
+    pass
+
+
+class MAP(Token, name="map"):
+    pass
+
+
+class RESERVED(Token, name="reserved"):
+    pass
+
+
+class TO(Token, name="to"):
+    pass
+
+
+class MAX(Token, name="max"):
+    pass
+
+
+class ENUM(Token, name="enum"):
+    pass
+
+
+class MESSAGE(Token, name="message"):
+    pass
+
+
+class EXTEND(Token, name="extend"):
+    pass
+
+
+class SERVICE(Token, name="service"):
+    pass
+
+
+class RPC(Token, name="rpc"):
+    pass
+
+
+class RETURNS(Token, name="returns"):
+    pass
+
+
+class STREAM(Token, name="stream"):
+    pass
+
 
 # Punctuation
-class SEMI(Token, name=";"): pass
-class COMMA(Token, name=","): pass
-class DOT(Token, name="."): pass
-class EQ(Token, name="="): pass
-class COLON(Token, name=":"): pass
-class SLASH(Token, name="/"): pass
-class LPAREN(Token, name="("): pass
-class RPAREN(Token, name=")"): pass
-class LBRACE(Token, name="{"): pass
-class RBRACE(Token, name="}"): pass
-class LBRACKET(Token, name="["): pass
-class RBRACKET(Token, name="]"): pass
-class LANGLE(Token, name="<"): pass
-class RANGLE(Token, name=">"): pass
+class SEMI(Token, name=";"):
+    pass
+
+
+class COMMA(Token, name=","):
+    pass
+
+
+class DOT(Token, name="."):
+    pass
+
+
+class EQ(Token, name="="):
+    pass
+
+
+class COLON(Token, name=":"):
+    pass
+
+
+class SLASH(Token, name="/"):
+    pass
+
+
+class LPAREN(Token, name="("):
+    pass
+
+
+class RPAREN(Token, name=")"):
+    pass
+
+
+class LBRACE(Token, name="{"):
+    pass
+
+
+class RBRACE(Token, name="}"):
+    pass
+
+
+class LBRACKET(Token, name="["):
+    pass
+
+
+class RBRACKET(Token, name="]"):
+    pass
+
+
+class LANGLE(Token, name="<"):
+    pass
+
+
+class RANGLE(Token, name=">"):
+    pass
+
 
 # Constants / booleans
-class TRUE(Token, name="true"): pass
-class FALSE(Token, name="false"): pass
-class EOF(Token, name="EOF"): pass
+class TRUE(Token, name="true"):
+    pass
+
+
+class FALSE(Token, name="false"):
+    pass
+
+
+class EOF(Token, name="EOF"):
+    pass
+
 
 # Keyword dictionary
 KEYWORDS = {
-    s.name: s for s in {
-        SYNTAX, IMPORT, WEAK, PUBLIC, PACKAGE, OPTION, REPEATED, OPTIONAL, ONEOF,
-        MAP, RESERVED, TO, MAX, ENUM, MESSAGE, EXTEND, SERVICE, RPC, RETURNS,
-        STREAM, TRUE, FALSE,
+    s.name: s
+    for s in {
+        SYNTAX,
+        IMPORT,
+        WEAK,
+        PUBLIC,
+        PACKAGE,
+        OPTION,
+        REPEATED,
+        OPTIONAL,
+        ONEOF,
+        MAP,
+        RESERVED,
+        TO,
+        MAX,
+        ENUM,
+        MESSAGE,
+        EXTEND,
+        SERVICE,
+        RPC,
+        RETURNS,
+        STREAM,
+        TRUE,
+        FALSE,
     }
 }
 
 # Punctuation dictionary
 PUNCTUATION = {
-    s.name: s for s in {
-        SEMI, COMMA, DOT, EQ, COLON, SLASH, LPAREN, RPAREN,
-        LBRACE, RBRACE, LBRACKET, RBRACKET, LANGLE, RANGLE,
+    s.name: s
+    for s in {
+        SEMI,
+        COMMA,
+        DOT,
+        EQ,
+        COLON,
+        SLASH,
+        LPAREN,
+        RPAREN,
+        LBRACE,
+        RBRACE,
+        LBRACKET,
+        RBRACKET,
+        LANGLE,
+        RANGLE,
     }
 }
 
@@ -198,23 +356,24 @@ class GrammarExtractor:
             for combo in itertools.product(*types)
         ]
 
-    def extract_from_function(self, func: Callable[[tuple[Symbol, ...]], NonTerminal]) -> list[Production]:
+    def extract_from_function(
+        self, func: Callable[[tuple[Symbol, ...]], NonTerminal]
+    ) -> list[Production]:
         """Extract production rule(s) from a function's type annotations.
 
         Can return multiple productions if values contains a union type.
         Returns empty list if the function doesn't have the right annotations.
         """
         try:
-            hints = get_type_hints(
-                func, globalns=globals(), include_extras=True)
+            hints = get_type_hints(func, globalns=globals(), include_extras=True)
         except Exception:
             return []
 
-        if 'return' not in hints or 'values' not in hints:
+        if "return" not in hints or "values" not in hints:
             return []
 
         # Extract head from return type
-        raw_return = hints['return']
+        raw_return = hints["return"]
         if not raw_return or not raw_return.is_nonterminal():
             return []
 
@@ -222,14 +381,14 @@ class GrammarExtractor:
         head = raw_return
 
         # Extract body from values parameter
-        values_type = hints['values']
+        values_type = hints["values"]
 
         return self._extract_from_values_type(values_type, head, func)
 
     def extract_from_class(self, cls: type) -> list[Production]:
         """Extract all productions from a class with annotated methods."""
         for name in dir(cls):
-            if name.startswith('act_'):
+            if name.startswith("act_"):
                 attr = getattr(cls, name)
                 if callable(attr):
                     prods = self.extract_from_function(attr)
@@ -241,6 +400,7 @@ class GrammarExtractor:
 # ============================================================================
 # Helper functions (for semantic actions)
 # ============================================================================
+
 
 def join_span(*values: ast.Node) -> Span:
     """Join the spans of multiple values into a single span."""
@@ -256,7 +416,6 @@ def join_span(*values: ast.Node) -> Span:
 # ============================================================================
 # Grammar builder with semantic actions
 # ============================================================================
-# ruff: noqa: E501
 class GrammarBuilder:
     """Proto3 grammar definition using type-annotation-driven productions.
 
@@ -272,12 +431,16 @@ class GrammarBuilder:
     # -----------------------------------------------------------------------
 
     @staticmethod
-    def act_primitive_const(values: tuple[INT | FLOAT | STRING | TRUE | FALSE]) -> ast.PrimitiveConstant:
+    def act_primitive_const(
+        values: tuple[INT | FLOAT | STRING | TRUE | FALSE],
+    ) -> ast.PrimitiveConstant:
         value = values[0]
         return ast.PrimitiveConstant(span=value.span, kind=type(value), value=value.lexeme)
 
     @staticmethod
-    def act_const(values: tuple[ast.PrimitiveConstant | ast.QualifiedName | ast.MessageConstant]) -> ast.Constant:
+    def act_const(
+        values: tuple[ast.PrimitiveConstant | ast.QualifiedName | ast.MessageConstant],
+    ) -> ast.Constant:
         value = values[0]
         return ast.Constant(span=value.span, value=value)
 
@@ -300,11 +463,10 @@ class GrammarBuilder:
             | SERVICE
             | RPC
             | RETURNS
-        ]
+        ],
     ) -> ast.Ident:
         value = values[0]
         return ast.Ident(span=value.span, text=values[0].lexeme)
-
 
     @staticmethod
     def act_dotted_name_eps(values: Epsilon) -> ast.DottedName:
@@ -318,7 +480,9 @@ class GrammarBuilder:
         return ast.DottedName(span=join_span(values[0], name), parts=(ident, *name.parts))
 
     @staticmethod
-    def act_qualified_name_absolute(values: tuple[DOT, ast.Ident, ast.DottedName]) -> ast.QualifiedName:
+    def act_qualified_name_absolute(
+        values: tuple[DOT, ast.Ident, ast.DottedName],
+    ) -> ast.QualifiedName:
         ident = values[1]
         name = values[2]
 
@@ -326,7 +490,7 @@ class GrammarBuilder:
         return ast.QualifiedName(
             span=join_span(values[0], name if name.parts else ident),
             absolute=True,
-            name=ast.DottedName(span=dotted_span, parts=(ident, *name.parts))
+            name=ast.DottedName(span=dotted_span, parts=(ident, *name.parts)),
         )
 
     @staticmethod
@@ -336,9 +500,7 @@ class GrammarBuilder:
 
         span = join_span(ident, name) if name.parts else ident.span
         return ast.QualifiedName(
-            span=span,
-            absolute=False,
-            name=ast.DottedName(span=span, parts=(ident, *name.parts))
+            span=span, absolute=False, name=ast.DottedName(span=span, parts=(ident, *name.parts))
         )
 
     # -----------------------------------------------------------------------
@@ -346,7 +508,9 @@ class GrammarBuilder:
     # -----------------------------------------------------------------------
 
     @staticmethod
-    def act_message_field_literal(values: tuple[ast.Ident, COLON, ast.Constant]) -> ast.MessageField:
+    def act_message_field_literal(
+        values: tuple[ast.Ident, COLON, ast.Constant],
+    ) -> ast.MessageField:
         name: ast.Ident = values[0]
         const: ast.Constant = values[2]
         return ast.MessageField(span=join_span(name, const), name=name, value=const)
@@ -362,14 +526,18 @@ class GrammarBuilder:
         return ast.MessageFields(span=field.span, fields=(field,))
 
     @staticmethod
-    def act_message_field_literals(values: tuple[ast.MessageField, COMMA, ast.MessageFields]) -> ast.MessageFields:
+    def act_message_field_literals(
+        values: tuple[ast.MessageField, COMMA, ast.MessageFields],
+    ) -> ast.MessageFields:
         field = values[0]
         value = values[2]
 
         return ast.MessageFields(span=join_span(field, value), fields=(field, *value.fields))
 
     @staticmethod
-    def act_message_constant(values: tuple[LBRACE, ast.MessageFields, RBRACE]) -> ast.MessageConstant:
+    def act_message_constant(
+        values: tuple[LBRACE, ast.MessageFields, RBRACE],
+    ) -> ast.MessageConstant:
         return ast.MessageConstant(span=join_span(values[0], values[2]), value=values[1])
 
     # -----------------------------------------------------------------------
@@ -388,7 +556,9 @@ class GrammarBuilder:
         return ast.OptionSuffix(span=join_span(values[0], suffix), items=(ident, *suffix.items))
 
     @staticmethod
-    def act_option_name_custom(values: tuple[LPAREN, ast.QualifiedName, RPAREN, ast.OptionSuffix]) -> ast.OptionName:
+    def act_option_name_custom(
+        values: tuple[LPAREN, ast.QualifiedName, RPAREN, ast.OptionSuffix],
+    ) -> ast.OptionName:
         qname = values[1]
         suffix = values[3]
         span_end = suffix if suffix.items else values[2]
@@ -413,10 +583,7 @@ class GrammarBuilder:
         name: ast.OptionName = values[0]
         const: ast.Constant = values[2]
 
-        return ast.Option(
-            span=join_span(name, const),
-            name=name, value=const
-        )
+        return ast.Option(span=join_span(name, const), name=name, value=const)
 
     @staticmethod
     def act_option_statement(values: tuple[OPTION, ast.Option, SEMI]) -> ast.OptionStmt:
@@ -436,9 +603,7 @@ class GrammarBuilder:
                 hint='use: syntax = "proto3";',
             )
 
-        return ast.Syntax(
-            span=join_span(values[0], values[3]), value=literal
-        )
+        return ast.Syntax(span=join_span(values[0], values[3]), value=literal)
 
     @staticmethod
     def act_import_simple(values: tuple[IMPORT, STRING, SEMI]) -> ast.Import:
@@ -454,16 +619,11 @@ class GrammarBuilder:
         modifier_value = values[1]
         modifier = ast.Ident(span=modifier_value.span, text=modifier_value.name)
 
-        return ast.Import(
-            span=join_span(values[0], values[3]),
-            path=path, modifier=modifier
-        )
+        return ast.Import(span=join_span(values[0], values[3]), path=path, modifier=modifier)
 
     @staticmethod
     def act_package_statement(values: tuple[PACKAGE, ast.QualifiedName, SEMI]) -> ast.Package:
-        return ast.Package(
-            span=join_span(values[0], values[2]), name=values[1]
-        )
+        return ast.Package(span=join_span(values[0], values[2]), name=values[1])
 
     # -----------------------------------------------------------------------
     # Semantic actions: Field options
@@ -472,7 +632,7 @@ class GrammarBuilder:
     @staticmethod
     def act_field_option_eps(values: Epsilon) -> ast.FieldOptionItems:
         _ = values
-        return  ast.FieldOptionItems(span=Span.empty())
+        return ast.FieldOptionItems(span=Span.empty())
 
     @staticmethod
     def act_field_option_single(values: tuple[ast.Option]) -> ast.FieldOptionItems:
@@ -480,7 +640,9 @@ class GrammarBuilder:
         return ast.FieldOptionItems(span=option.span, value=(option,))
 
     @staticmethod
-    def act_field_option_items(values: tuple[ast.Option, COMMA, ast.FieldOptionItems]) -> ast.FieldOptionItems:
+    def act_field_option_items(
+        values: tuple[ast.Option, COMMA, ast.FieldOptionItems],
+    ) -> ast.FieldOptionItems:
         option = values[0]
         options = values[2]
 
@@ -493,7 +655,9 @@ class GrammarBuilder:
         return ast.FieldOptions(span=Span.empty())
 
     @staticmethod
-    def act_field_options(values: tuple[LBRACKET, ast.FieldOptionItems, RBRACKET]) -> ast.FieldOptions:
+    def act_field_options(
+        values: tuple[LBRACKET, ast.FieldOptionItems, RBRACKET],
+    ) -> ast.FieldOptions:
         return ast.FieldOptions(span=join_span(values[0], values[2]), items=values[1])
 
     # -----------------------------------------------------------------------
@@ -506,10 +670,14 @@ class GrammarBuilder:
         return ast.MapKeyType(span=ident.span, ident=ident)
 
     @staticmethod
-    def act_map_type(values: tuple[MAP, LANGLE, ast.MapKeyType, COMMA, ast.QualifiedName, RANGLE]) -> ast.MapType:
+    def act_map_type(
+        values: tuple[MAP, LANGLE, ast.MapKeyType, COMMA, ast.QualifiedName, RANGLE],
+    ) -> ast.MapType:
         key_type: ast.MapKeyType = values[2]
         value_type: ast.QualifiedName = values[4]
-        return ast.MapType(span=join_span(values[0], values[5]), key_type=key_type, value_type=value_type)
+        return ast.MapType(
+            span=join_span(values[0], values[5]), key_type=key_type, value_type=value_type
+        )
 
     @staticmethod
     def act_field_label_eps(values: Epsilon) -> ast.FieldLabel:
@@ -538,7 +706,7 @@ class GrammarBuilder:
             INT,
             ast.FieldOptions,
             SEMI,
-        ]
+        ],
     ) -> ast.Field:
         number = ast.PrimitiveConstant(span=values[4].span, kind=INT, value=values[4].lexeme)
 
@@ -561,7 +729,7 @@ class GrammarBuilder:
 
     @staticmethod
     def act_oneof_field(
-        values: tuple[ast.QualifiedName, ast.Ident, EQ, INT, ast.FieldOptions, SEMI]
+        values: tuple[ast.QualifiedName, ast.Ident, EQ, INT, ast.FieldOptions, SEMI],
     ) -> ast.OneofField:
         field = ast.Field(
             span=join_span(values[0], values[5]),
@@ -569,7 +737,7 @@ class GrammarBuilder:
             number=ast.PrimitiveConstant(span=values[3].span, kind=INT, value=values[3].lexeme),
             field_type=values[0],
             label=ast.FieldLabel(span=Span.empty(), none=True),
-            options=values[4]
+            options=values[4],
         )
 
         return ast.OneofField(span=field.span, field=field)
@@ -608,8 +776,7 @@ class GrammarBuilder:
     def act_reserved_single(values: tuple[INT]) -> ast.ReservedRange:
         tok: Token = values[0]
         return ast.ReservedRange(
-            span=tok.span,
-            start=ast.PrimitiveConstant(span=tok.span, kind=INT, value=tok.lexeme)
+            span=tok.span, start=ast.PrimitiveConstant(span=tok.span, kind=INT, value=tok.lexeme)
         )
 
     @staticmethod
@@ -620,7 +787,7 @@ class GrammarBuilder:
         return ast.ReservedRange(
             span=join_span(start, end),
             start=ast.PrimitiveConstant(span=start.span, kind=INT, value=start.lexeme),
-            end=ast.PrimitiveConstant(span=end.span, kind=INT, value=end.lexeme)
+            end=ast.PrimitiveConstant(span=end.span, kind=INT, value=end.lexeme),
         )
 
     @staticmethod
@@ -630,7 +797,7 @@ class GrammarBuilder:
         return ast.ReservedRange(
             span=join_span(start, end),
             start=ast.PrimitiveConstant(span=start.span, kind=INT, value=start.lexeme),
-            end=ast.Ident(span=end.span, text=end.name)
+            end=ast.Ident(span=end.span, text=end.name),
         )
 
     @staticmethod
@@ -639,18 +806,26 @@ class GrammarBuilder:
         return ast.RangeCollector(span=Span.empty())
 
     @staticmethod
-    def act_reserved_ranges_tail(values: tuple[COMMA, ast.ReservedRange, ast.RangeCollector]) -> ast.RangeCollector:
+    def act_reserved_ranges_tail(
+        values: tuple[COMMA, ast.ReservedRange, ast.RangeCollector],
+    ) -> ast.RangeCollector:
         collected = values[2]
         last = collected if collected.ranges else values[1]
-        return ast.RangeCollector(span=join_span(values[0], last), ranges=(values[1], *values[2].ranges))
+        return ast.RangeCollector(
+            span=join_span(values[0], last), ranges=(values[1], *values[2].ranges)
+        )
 
     @staticmethod
-    def act_reserved_ranges(values: tuple[ast.ReservedRange, ast.RangeCollector]) -> ast.ReservedRanges:
+    def act_reserved_ranges(
+        values: tuple[ast.ReservedRange, ast.RangeCollector],
+    ) -> ast.ReservedRanges:
         range_item = values[0]
         collected = values[1]
 
         last = collected if collected.ranges else range_item
-        return ast.ReservedRanges(span=join_span(range_item, last), ranges=(range_item, *collected.ranges))
+        return ast.ReservedRanges(
+            span=join_span(range_item, last), ranges=(range_item, *collected.ranges)
+        )
 
     @staticmethod
     def act_reserved_names_eps(values: Epsilon) -> ast.NameCollector:
@@ -658,13 +833,15 @@ class GrammarBuilder:
         return ast.NameCollector(span=Span.empty())
 
     @staticmethod
-    def act_reserved_names_tail(values: tuple[COMMA, STRING, ast.NameCollector]) -> ast.NameCollector:
+    def act_reserved_names_tail(
+        values: tuple[COMMA, STRING, ast.NameCollector],
+    ) -> ast.NameCollector:
         token = values[1]
         collected = values[2]
         last = collected if collected.names else token
         return ast.NameCollector(
             span=join_span(values[0], last),
-            names=(ast.Ident(span=token.span, text=token.lexeme), *values[2].names)
+            names=(ast.Ident(span=token.span, text=token.lexeme), *values[2].names),
         )
 
     @staticmethod
@@ -675,7 +852,7 @@ class GrammarBuilder:
         last = collected if collected.names else token
         return ast.ReservedNames(
             span=join_span(token, last),
-            names=(ast.Ident(span=token.span, text=token.lexeme), *collected.names)
+            names=(ast.Ident(span=token.span, text=token.lexeme), *collected.names),
         )
 
     @staticmethod
@@ -690,10 +867,7 @@ class GrammarBuilder:
 
     @staticmethod
     def act_reserved_statement(values: tuple[RESERVED, ast.ReservedSpec, SEMI]) -> ast.Reserved:
-        return ast.Reserved(
-            span=join_span(values[0], values[2]),
-            spec=values[1]
-        )
+        return ast.Reserved(span=join_span(values[0], values[2]), spec=values[1])
 
     # -----------------------------------------------------------------------
     # Semantic actions: Enum
@@ -747,7 +921,15 @@ class GrammarBuilder:
 
     @staticmethod
     def act_message_elem(
-        values: tuple[ast.Field | ast.Oneof | ast.Enum | ast.Message | ast.Extend | ast.OptionStmt | ast.Reserved]
+        values: tuple[
+            ast.Field
+            | ast.Oneof
+            | ast.Enum
+            | ast.Message
+            | ast.Extend
+            | ast.OptionStmt
+            | ast.Reserved
+        ],
     ) -> ast.MessageElem:
         element = values[0]
         return ast.MessageElem(span=element.span, element=element)
@@ -765,13 +947,16 @@ class GrammarBuilder:
         last = body if body.elements else elem
         return ast.MessageBody(span=join_span(elem, last), elements=(elem, *body.elements))
 
-
     @staticmethod
-    def act_message(values: tuple[MESSAGE, ast.Ident, LBRACE, ast.MessageBody, RBRACE]) -> ast.Message:
+    def act_message(
+        values: tuple[MESSAGE, ast.Ident, LBRACE, ast.MessageBody, RBRACE],
+    ) -> ast.Message:
         return ast.Message(span=join_span(values[0], values[4]), name=values[1], body=values[3])
 
     @staticmethod
-    def act_extend(values: tuple[EXTEND, ast.QualifiedName, LBRACE, ast.MessageBody, RBRACE]) -> ast.Extend:
+    def act_extend(
+        values: tuple[EXTEND, ast.QualifiedName, LBRACE, ast.MessageBody, RBRACE],
+    ) -> ast.Extend:
         return ast.Extend(span=join_span(values[0], values[4]), name=values[1], body=values[3])
 
     # -----------------------------------------------------------------------
@@ -802,12 +987,16 @@ class GrammarBuilder:
         return ast.RpcOptionCollector(span=Span.empty())
 
     @staticmethod
-    def act_rpc_options(values: tuple[ast.RpcOptionElem, ast.RpcOptionCollector]) -> ast.RpcOptionCollector:
+    def act_rpc_options(
+        values: tuple[ast.RpcOptionElem, ast.RpcOptionCollector],
+    ) -> ast.RpcOptionCollector:
         elem = values[0]
         collected = values[1]
 
         last = collected if collected.options else elem
-        return ast.RpcOptionCollector(span=join_span(elem, last), options=(elem, *collected.options))
+        return ast.RpcOptionCollector(
+            span=join_span(elem, last), options=(elem, *collected.options)
+        )
 
     @staticmethod
     def act_rpc_option_empty(values: tuple[SEMI]) -> ast.RpcOption:
@@ -833,7 +1022,7 @@ class GrammarBuilder:
             ast.QualifiedName,
             RPAREN,
             ast.RpcOption,
-        ]
+        ],
     ) -> ast.Rpc:
         body: ast.RpcOption = values[11]
         last = body if body.options else values[10]
@@ -845,7 +1034,7 @@ class GrammarBuilder:
             response=values[9],
             request_stream=values[3],
             response_stream=values[8],
-            options=body
+            options=body,
         )
 
     @staticmethod
@@ -867,7 +1056,9 @@ class GrammarBuilder:
         return ast.ServiceBody(span=join_span(elem, last), elements=(elem, *body.elements))
 
     @staticmethod
-    def act_service(values: tuple[SERVICE, ast.Ident, LBRACE, ast.ServiceBody, RBRACE]) -> ast.Service:
+    def act_service(
+        values: tuple[SERVICE, ast.Ident, LBRACE, ast.ServiceBody, RBRACE],
+    ) -> ast.Service:
         return ast.Service(span=join_span(values[0], values[4]), name=values[1], body=values[3])
 
     # -----------------------------------------------------------------------
@@ -880,7 +1071,16 @@ class GrammarBuilder:
 
     @staticmethod
     def act_item(
-        values: tuple[ast.Syntax | ast.Import | ast.Package | ast.OptionStmt | ast.Message | ast.Extend | ast.Enum | ast.Service]
+        values: tuple[
+            ast.Syntax
+            | ast.Import
+            | ast.Package
+            | ast.OptionStmt
+            | ast.Message
+            | ast.Extend
+            | ast.Enum
+            | ast.Service
+        ],
     ) -> ast.ProtoItem:
         item = values[0]
         return ast.ProtoItem(span=item.span, item=item)

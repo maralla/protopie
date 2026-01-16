@@ -39,8 +39,7 @@ _MAP_KEYS = ["int32", "int64", "uint32", "uint64", "bool", "string"]
 def _ident(r: random.Random, *, allow_keyword_syntax: bool = False) -> str:
     head = r.choice(string.ascii_letters + "_")
     tail = "".join(
-        r.choice(string.ascii_letters + string.digits + "_")
-        for _ in range(r.randint(0, 10))
+        r.choice(string.ascii_letters + string.digits + "_") for _ in range(r.randint(0, 10))
     )
     s = head + tail
     if allow_keyword_syntax and r.random() < 0.02:
@@ -206,9 +205,7 @@ def generate_corpus_files(*, seed: int, count: int) -> list[tuple[str, str]]:
                 out.append(f'import "{target}";')
             else:
                 out.append(line)
-        fixed.append(
-            (names[i], "\n".join(out) + ("\n" if not out or out[-1] != "" else ""))
-        )
+        fixed.append((names[i], "\n".join(out) + ("\n" if not out or out[-1] != "" else "")))
     return fixed
 
 
@@ -251,4 +248,3 @@ def _write_tmp(root: Path, name: str, content: str) -> Path:
     p = root / name
     p.write_text(content, encoding="utf-8")
     return p
-

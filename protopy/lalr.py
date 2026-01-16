@@ -24,8 +24,6 @@ if TYPE_CHECKING:
 LR0Core = tuple[int, int]  # (production_index, dot_position)
 
 
-
-
 @dataclass(frozen=True, slots=True)
 class LR1Item:
     """An LR(1) item: (production_index, dot_position, lookahead_terminal)."""
@@ -81,7 +79,6 @@ class ParseTable:
 
 class GrammarAnalysisError(Exception):
     """Raised when grammar analysis finds conflicts or issues."""
-
 
 
 class TableBuilder:
@@ -159,7 +156,7 @@ class TableBuilder:
         """Create augmented grammar with S' -> S production."""
         # Dynamically create a new nonterminal class for S'
         start_prime_name = self.grammar.start.symbol_name + "'"
-        start_prime = type(start_prime_name, (NonTerminal,), {'symbol_name': start_prime_name})
+        start_prime = type(start_prime_name, (NonTerminal,), {"symbol_name": start_prime_name})
 
         augmented_production = Production(
             head=start_prime,
@@ -176,7 +173,8 @@ class TableBuilder:
     def _productions_for_nonterminal(self, nonterminal: type[NonTerminal]) -> tuple[int, ...]:
         """Return production indices for a given nonterminal."""
         return tuple(
-            index for index, production in enumerate(self.augmented_grammar.productions)
+            index
+            for index, production in enumerate(self.augmented_grammar.productions)
             if production.head == nonterminal
         )
 
@@ -196,7 +194,7 @@ class TableBuilder:
             if not symbol.is_nonterminal():
                 continue
 
-            beta = production.body[item.dot_position + 1:]
+            beta = production.body[item.dot_position + 1 :]
             lookahead_first = self._first_of_sequence((*beta, item.lookahead))
             # Filter out EPSILON - remaining items are guaranteed to be Terminal
             lookaheads: list[type[Terminal]] = [
@@ -300,7 +298,7 @@ class TableBuilder:
         actions: dict[SymbolType, tuple[str, int]],
         state: State,
         state_index: int,
-        transitions: StateTransitions
+        transitions: StateTransitions,
     ) -> None:
         """Build ACTION entries for a single state."""
         for item in state:

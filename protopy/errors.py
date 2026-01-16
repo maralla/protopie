@@ -73,4 +73,3 @@ class ParseError(Exception):
         lines = [f"{len(self.details)} errors:"]
         lines.extend(f"  - {detail}" for detail in self.details)
         return "\n".join(lines)
-

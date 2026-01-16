@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# ruff: noqa: D103, T201, S603, E501
+# ruff: noqa: D103, T201, S603
 
 import argparse
 import shutil
@@ -42,7 +42,19 @@ def main(argv: list[str] | None = None) -> int:
     if repo.exists():
         shutil.rmtree(repo)
 
-    _run(["git", "clone", "--depth", "1", "--branch", args.ref, "https://github.com/protocolbuffers/protobuf.git", str(repo)], cwd=dest)
+    _run(
+        [
+            "git",
+            "clone",
+            "--depth",
+            "1",
+            "--branch",
+            args.ref,
+            "https://github.com/protocolbuffers/protobuf.git",
+            str(repo),
+        ],
+        cwd=dest,
+    )
 
     # Copy a proto3-only subset of fixtures.
     # Note: upstream may contain proto2 / edition-based files. We filter on syntax = "proto3".
@@ -81,4 +93,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
